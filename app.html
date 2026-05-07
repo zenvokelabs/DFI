@@ -1124,7 +1124,7 @@ let currentUser = null, cartItems = [], currentFood = null, currentMealType = 'b
 // ── INIT ──
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.href = 'login-app.html'; return; }
+  if (!session) { window.location.href = 'index.html'; return; }
   currentUser = session.user;
   await Promise.all([loadProfile(), loadLabData(), loadTodayMeals(), loadGlucoseReadings()]);
   buildDefaultFoods();
@@ -1133,7 +1133,7 @@ let currentUser = null, cartItems = [], currentFood = null, currentMealType = 'b
   buildAdherenceDays();
 })();
 
-sb.auth.onAuthStateChange((e, s) => { if (e === 'SIGNED_OUT') window.location.href = 'login-app.html'; });
+sb.auth.onAuthStateChange((e, s) => { if (e === 'SIGNED_OUT') window.location.href = 'index.html'; });
 
 // ── PROFILE ──
 async function loadProfile() {
@@ -1648,7 +1648,7 @@ function timeSince(ts) {
   if (d < 86400) return Math.floor(d / 3600) + 'h ago';
   return Math.floor(d / 86400) + 'd ago';
 }
-async function logout() { await sb.auth.signOut(); window.location.href = 'login-app.html'; }
+async function logout() { await sb.auth.signOut(); window.location.href = 'index.html'; }
 </script>
 </body>
 </html>
