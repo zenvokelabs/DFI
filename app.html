@@ -484,7 +484,7 @@ let currentUser = null, currentFood = null, cartItems = [];
 // ── INIT ──
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.href = 'login-app.html'; return; }
+  if (!session) { window.location.href = 'index.html'; return; }
   currentUser = session.user;
   loadProfile();
   loadLabData();
@@ -494,7 +494,7 @@ let currentUser = null, currentFood = null, cartItems = [];
 })();
 
 sb.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT') window.location.href = 'login-app.html';
+  if (event === 'SIGNED_OUT') window.location.href = 'index.html';
 });
 
 // ── PROFILE ──
