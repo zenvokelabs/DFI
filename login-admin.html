@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just Zero Admin — Secure Access</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0a0f0d;
+  --surface:#111714;
+  --surface2:#172219;
+  --border:#1f2e25;
+  --border2:#2a3d30;
+  --green:#00c96e;
+  --green-dim:#00874a;
+  --green-glow:rgba(0,201,110,0.12);
+  --text:#e8f0eb;
+  --muted:#5a7060;
+  --muted2:#8aab8e;
+  --red:#ff4d4d;
+  --amber:#ffb020;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+
+/* ── GRID BACKGROUND ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image: linear-gradient(rgba(0,201,110,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0,201,110,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+/* ── SCAN LINE ANIMATION ── */
+body::after{
+  content:'';position:fixed;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--green),transparent);
+  animation:scan 4s linear infinite;opacity:0.4;z-index:1;
+}
+@keyframes scan{from{top:-2px;}to{top:100vh;}}
+
+.page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;position:relative;z-index:2;
+}
+
+/* ── CARD ── */
+.login-card{
+  width:100%;max-width:440px;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:4px;overflow:hidden;
+  box-shadow:0 0 60px rgba(0,201,110,0.06), 0 20px 40px rgba(0,0,0,0.5);
+  position:relative;
+}
+
+/* ── CARD HEADER ── */
+.card-header{
+  padding:28px 32px 24px;
+  background:var(--surface2);
+  border-bottom:1px solid var(--border2);
+  position:relative;
+}
+.card-header::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--green),transparent);
+}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.logo-wrap{display:flex;align-items:center;gap:12px;}
+.logo-icon{
+  width:36px;height:36px;background:var(--green-glow);border:1px solid var(--green-dim);
+  border-radius:2px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+}
+.logo-name{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--green);font-weight:600;letter-spacing:2px;}
+.logo-sub{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+
+.security-badge{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(0,201,110,0.06);border:1px solid var(--border2);
+  padding:5px 10px;border-radius:2px;
+}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.badge-text{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted2);letter-spacing:1px;}
+
+.header-title{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;}
+.terminal-line{
+  font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted2);
+  margin-top:8px;display:flex;align-items:center;gap:8px;
+}
+.terminal-prompt{color:var(--green);}
+
+/* ── CARD BODY ── */
+.card-body{padding:28px 32px;}
+
+/* ── ALERT ── */
+.alert{
+  display:none;padding:10px 14px;border-radius:2px;
+  font-size:12px;font-family:'IBM Plex Mono',monospace;
+  margin-bottom:20px;border-left:3px solid;
+}
+.alert.show{display:flex;align-items:flex-start;gap:8px;}
+.alert-error{background:rgba(255,77,77,0.08);border-color:var(--red);color:var(--red);}
+.alert-success{background:rgba(0,201,110,0.08);border-color:var(--green);color:var(--green);}
+.alert-warn{background:rgba(255,176,32,0.08);border-color:var(--amber);color:var(--amber);}
+
+/* ── FIELD ── */
+.field{margin-bottom:20px;}
+.field-label{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.field-label a{color:var(--green-dim);text-decoration:none;font-size:10px;}
+.field-label a:hover{color:var(--green);}
+
+.field-input-wrap{position:relative;display:flex;align-items:center;}
+.field input{
+  width:100%;padding:12px 42px 12px 14px;
+  background:var(--bg);border:1px solid var(--border2);
+  color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px;
+  border-radius:2px;outline:none;transition:all .2s;
+  caret-color:var(--green);
+}
+.field input::placeholder{color:var(--muted);}
+.field input:focus{
+  border-color:var(--green);
+  box-shadow:0 0 0 1px var(--green), 0 0 16px var(--green-glow);
+}
+.input-icon{position:absolute;right:12px;font-size:14px;color:var(--muted);pointer-events:none;}
+.eye-btn{position:absolute;right:12px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:0;transition:color .2s;}
+.eye-btn:hover{color:var(--green);}
+
+/* ── ATTEMPT METER ── */
+.attempt-bar{display:flex;gap:4px;margin-top:8px;}
+.attempt-pip{flex:1;height:3px;background:var(--border2);border-radius:1px;transition:background .3s;}
+.attempt-pip.used{background:var(--red);}
+
+/* ── BUTTON ── */
+.btn-login{
+  width:100%;padding:14px;
+  background:transparent;
+  border:1px solid var(--green);
+  color:var(--green);
+  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;
+  letter-spacing:2px;text-transform:uppercase;
+  border-radius:2px;cursor:pointer;
+  transition:all .25s;position:relative;overflow:hidden;
+  margin-top:4px;
+}
+.btn-login::before{
+  content:'';position:absolute;inset:0;
+  background:var(--green);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:0;
+}
+.btn-login:hover::before{transform:scaleX(1);}
+.btn-login:hover{color:var(--bg);}
+.btn-login span{position:relative;z-index:1;}
+.btn-login:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-login:disabled::before{transform:none!important;}
+
+/* ── MFA SECTION ── */
+.mfa-section{display:none;}
+.mfa-section.show{display:block;}
+.mfa-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;text-align:center;}
+.mfa-grid{display:flex;gap:8px;justify-content:center;margin-bottom:20px;}
+.mfa-input{
+  width:48px;height:52px;text-align:center;
+  background:var(--bg);border:1px solid var(--border2);
+  color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;
+  border-radius:2px;outline:none;transition:all .2s;caret-color:var(--green);
+}
+.mfa-input:focus{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 0 16px var(--green-glow);}
+.mfa-resend{text-align:center;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.mfa-resend a{color:var(--green);text-decoration:none;}
+
+/* ── CARD FOOTER ── */
+.card-footer{
+  padding:14px 32px;background:var(--surface2);
+  border-top:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-text{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;}
+.footer-link{font-size:10px;color:var(--green-dim);text-decoration:none;font-family:'IBM Plex Mono',monospace;}
+.footer-link:hover{color:var(--green);}
+
+/* ── SPINNER ── */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,201,110,0.2);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── SUCCESS STATE ── */
+.success-state{display:none;text-align:center;padding:20px 0;}
+.success-state.show{display:block;}
+.success-icon{font-size:48px;animation:pop .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pop{from{transform:scale(0);}to{transform:scale(1);}}
+.success-title{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--green);margin-top:12px;letter-spacing:1px;}
+.success-sub{font-size:12px;color:var(--muted2);margin-top:8px;}
+.progress-bar{height:2px;background:var(--border2);border-radius:1px;margin-top:16px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--green);width:0;transition:width 2s linear;}
+
+/* ACTIVITY LOG */
+.activity-log{margin-top:20px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:2px;}
+.log-title{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.log-entry{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted2);padding:3px 0;display:flex;gap:8px;}
+.log-time{color:var(--muted);}
+.log-ok{color:var(--green);}
+.log-err{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="login-card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="header-top">
+        <div class="logo-wrap">
+          <div class="logo-icon">🍃</div>
+          <div>
+            <div class="logo-name">JUST ZERO</div>
+            <div class="logo-sub">Admin Console</div>
+          </div>
+        </div>
+        <div class="security-badge">
+          <div class="badge-dot"></div>
+          <div class="badge-text">SECURE</div>
+        </div>
+      </div>
+      <div class="header-title">// ADMIN ACCESS PORTAL</div>
+      <div class="terminal-line">
+        <span class="terminal-prompt">$</span>
+        <span id="terminal-text">Awaiting credentials...</span>
+        <span style="display:inline-block;width:8px;height:12px;background:var(--green);animation:blink 1s step-end infinite;margin-left:2px;"></span>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="card-body">
+      <div class="alert alert-error" id="msg-error"></div>
+      <div class="alert alert-success" id="msg-success"></div>
+      <div class="alert alert-warn" id="msg-warn"></div>
+
+      <!-- LOGIN FORM -->
+      <div id="login-form">
+        <div class="field">
+          <div class="field-label">
+            <span>// ADMIN EMAIL</span>
+          </div>
+          <div class="field-input-wrap">
+            <input type="email" id="admin-email" placeholder="admin@justzero.in" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('admin-pass').focus()">
+            <span class="input-icon">▸</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <span>// PASSWORD</span>
+            <a href="#" onclick="showForgot(event)">RESET ACCESS</a>
+          </div>
+          <div class="field-input-wrap">
+            <input type="password" id="admin-pass" placeholder="••••••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')adminLogin()">
+            <button class="eye-btn" onclick="toggleEye()">◉</button>
+          </div>
+        </div>
+
+        <div id="attempt-section" style="display:none;margin-bottom:16px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red);margin-bottom:6px;letter-spacing:1px;">FAILED ATTEMPTS</div>
+          <div class="attempt-bar" id="attempt-bar">
+            <div class="attempt-pip"></div>
+            <div class="attempt-pip"></div>
+            <div class="attempt-pip"></div>
+            <div class="attempt-pip"></div>
+            <div class="attempt-pip"></div>
+          </div>
+        </div>
+
+        <button class="btn-login" id="login-btn" onclick="adminLogin()">
+          <span>▶ AUTHENTICATE</span>
+        </button>
+
+        <div class="activity-log" id="activity-log">
+          <div class="log-title">// RECENT ACTIVITY</div>
+          <div class="log-entry"><span class="log-time">--:--:--</span><span>Waiting for input...</span></div>
+        </div>
+      </div>
+
+      <!-- MFA -->
+      <div id="mfa-section" class="mfa-section">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:36px;">🔐</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--green);margin-top:10px;letter-spacing:1px;">2FA VERIFICATION</div>
+          <div style="font-size:12px;color:var(--muted2);margin-top:6px;">Check your email for the 6-digit code</div>
+        </div>
+        <div class="mfa-label">// ENTER CODE</div>
+        <div class="mfa-grid" id="mfa-grid">
+          <input class="mfa-input" maxlength="1" oninput="mfaInput(this,0)">
+          <input class="mfa-input" maxlength="1" oninput="mfaInput(this,1)">
+          <input class="mfa-input" maxlength="1" oninput="mfaInput(this,2)">
+          <input class="mfa-input" maxlength="1" oninput="mfaInput(this,3)">
+          <input class="mfa-input" maxlength="1" oninput="mfaInput(this,4)">
+          <input class="mfa-input" maxlength="1" oninput="mfaInput(this,5)">
+        </div>
+        <button class="btn-login" onclick="verifyMFA()"><span>▶ VERIFY CODE</span></button>
+        <div class="mfa-resend" style="margin-top:12px;">Didn't get it? <a href="#" onclick="resendCode(event)">Resend code</a></div>
+        <div style="text-align:center;margin-top:10px;"><a href="#" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);" onclick="showLogin(event)">← BACK</a></div>
+      </div>
+
+      <!-- FORGOT -->
+      <div id="forgot-section" style="display:none;">
+        <div style="margin-bottom:20px;"><a href="#" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);" onclick="showLogin(event)">← BACK TO LOGIN</a></div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--green);margin-bottom:16px;letter-spacing:1px;">// RESET ACCESS</div>
+        <div class="field">
+          <div class="field-label"><span>// ADMIN EMAIL</span></div>
+          <div class="field-input-wrap">
+            <input type="email" id="reset-email" placeholder="admin@justzero.in">
+            <span class="input-icon">▸</span>
+          </div>
+        </div>
+        <button class="btn-login" onclick="sendReset()"><span>▶ SEND RESET LINK</span></button>
+      </div>
+
+      <!-- SUCCESS -->
+      <div id="success-state" class="success-state">
+        <div class="success-icon">✅</div>
+        <div class="success-title">ACCESS GRANTED</div>
+        <div class="success-sub">Identity verified. Redirecting to dashboard...</div>
+        <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="card-footer">
+      <span class="footer-text">JUST ZERO ADMIN v2.0 · SECURE SESSION</span>
+      <a href="login-app.html" class="footer-link">USER APP ›</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// SUPABASE CONFIG — replace with your keys
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const ADMIN_REDIRECT = 'admin.html';
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let failedAttempts = 0;
+let eyeVisible = false;
+
+// Check existing session
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const { data: profile } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
+    if (profile?.role === 'admin') window.location.href = ADMIN_REDIRECT;
+  }
+})();
+
+// Terminal text animation
+const messages = ['Awaiting credentials...','Secure TLS connection established','Admin portal ready'];
+let msgIdx = 0;
+setInterval(() => {
+  if (document.getElementById('login-form').style.display !== 'none') {
+    document.getElementById('terminal-text').textContent = messages[msgIdx++ % messages.length];
+  }
+}, 3000);
+
+async function adminLogin() {
+  const email = document.getElementById('admin-email').value.trim();
+  const pw = document.getElementById('admin-pass').value;
+  if (!email || !pw) return showErr('Email and password required.');
+  setLoading(true);
+  addLog(email, 'attempting login...');
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) {
+    setLoading(false);
+    failedAttempts++;
+    updateAttempts();
+    addLog(email, 'AUTH FAILED: ' + error.message, true);
+    return showErr('Authentication failed: ' + error.message);
+  }
+
+  // Check admin role
+  const { data: profile } = await sb.from('profiles').select('role, full_name').eq('id', data.user.id).single();
+  if (!profile || profile.role !== 'admin') {
+    await sb.auth.signOut();
+    setLoading(false);
+    addLog(email, 'ACCESS DENIED: insufficient privileges', true);
+    return showErr('Access denied. This account does not have admin privileges.');
+  }
+
+  setLoading(false);
+  addLog(email, 'AUTHENTICATED ✓', false, true);
+  showSuccessState(profile.full_name || email);
+}
+
+function showSuccessState(name) {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('success-state').classList.add('show');
+  document.getElementById('terminal-text').textContent = 'Identity confirmed: ' + name;
+  setTimeout(() => {
+    document.getElementById('prog-fill').style.width = '100%';
+  }, 100);
+  setTimeout(() => window.location.href = ADMIN_REDIRECT, 2200);
+}
+
+async function sendReset() {
+  const email = document.getElementById('reset-email').value.trim();
+  if (!email) return showErr('Enter your email address.');
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/admin-reset.html' });
+  if (error) return showErr(error.message);
+  showSuccessMsg('Reset link sent to ' + email);
+}
+
+function mfaInput(el, idx) {
+  if (el.value.length === 1 && idx < 5) {
+    document.querySelectorAll('.mfa-input')[idx + 1].focus();
+  }
+  const code = [...document.querySelectorAll('.mfa-input')].map(i => i.value).join('');
+  if (code.length === 6) verifyMFA();
+}
+
+async function verifyMFA() {
+  const code = [...document.querySelectorAll('.mfa-input')].map(i => i.value).join('');
+  if (code.length < 6) return showErr('Enter the full 6-digit code.');
+  // In production: verify with sb.auth.verifyOtp({ type: 'email', email, token: code })
+  showSuccessState('Admin');
+}
+
+function resendCode(e) { e.preventDefault(); showSuccessMsg('New code sent!'); }
+
+function updateAttempts() {
+  document.getElementById('attempt-section').style.display = 'block';
+  const pips = document.querySelectorAll('.attempt-pip');
+  pips.forEach((p, i) => p.classList.toggle('used', i < failedAttempts));
+  if (failedAttempts >= 5) {
+    document.getElementById('login-btn').disabled = true;
+    showErr('Account temporarily locked. Too many failed attempts. Reset your password.');
+  }
+}
+
+function addLog(email, msg, isErr = false, isOk = false) {
+  const log = document.getElementById('activity-log');
+  const now = new Date().toLocaleTimeString('en-IN', { hour12: false });
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${now}</span><span class="${isErr ? 'log-err' : isOk ? 'log-ok' : ''}">${msg}</span>`;
+  log.appendChild(entry);
+  if (log.children.length > 4) log.removeChild(log.children[1]);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ── UI HELPERS ──
+function showErr(msg) {
+  const el = document.getElementById('msg-error');
+  el.innerHTML = '⚠ ' + msg;
+  el.classList.add('show');
+  ['msg-success','msg-warn'].forEach(id => document.getElementById(id).classList.remove('show'));
+}
+function showSuccessMsg(msg) {
+  const el = document.getElementById('msg-success');
+  el.innerHTML = '✓ ' + msg;
+  el.classList.add('show');
+  ['msg-error','msg-warn'].forEach(id => document.getElementById(id).classList.remove('show'));
+}
+function setLoading(on) {
+  const btn = document.getElementById('login-btn');
+  btn.disabled = on;
+  btn.querySelector('span').innerHTML = on ? '<span class="spinner"></span>VERIFYING...' : '▶ AUTHENTICATE';
+}
+function toggleEye() {
+  const input = document.getElementById('admin-pass');
+  eyeVisible = !eyeVisible;
+  input.type = eyeVisible ? 'text' : 'password';
+  document.querySelector('.eye-btn').textContent = eyeVisible ? '◎' : '◉';
+}
+function showForgot(e) {
+  e.preventDefault();
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('forgot-section').style.display = 'block';
+}
+function showLogin(e) {
+  e.preventDefault();
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('forgot-section').style.display = 'none';
+  document.getElementById('mfa-section').classList.remove('show');
+}
+</script>
+</body>
+</html>

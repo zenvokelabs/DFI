@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just Zero Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#0a0f0d;--surface:#111714;--surface2:#172219;--surface3:#1e2e24;
+  --border:#1f2e25;--border2:#2a3d30;--border3:#355040;
+  --green:#00c96e;--green-dim:#00874a;--green-glow:rgba(0,201,110,.12);--green-pale:rgba(0,201,110,.06);
+  --text:#e8f0eb;--text2:#9ab5a0;--text3:#5a7060;
+  --red:#ff5252;--red-soft:rgba(255,82,82,.1);
+  --amber:#ffb020;--amber-soft:rgba(255,176,32,.1);
+  --blue:#4fc3f7;--blue-soft:rgba(79,195,247,.1);
+  --sidebar:220px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;height:100vh;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--surface);border-right:1px solid var(--border2);
+  display:flex;flex-direction:column;
+  position:relative;z-index:10;
+}
+.sidebar::before{content:'';position:absolute;top:0;right:0;width:1px;height:100%;background:linear-gradient(to bottom,transparent,var(--green),transparent);opacity:.3;}
+
+.sb-logo{padding:24px 20px;border-bottom:1px solid var(--border2);}
+.sb-logo-name{font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--green);font-weight:600;letter-spacing:2px;}
+.sb-logo-tag{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+
+.sb-nav{flex:1;padding:16px 0;overflow-y:auto;}
+.sb-section{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;padding:12px 20px 6px;}
+
+.sb-item{
+  display:flex;align-items:center;gap:10px;padding:10px 20px;
+  cursor:pointer;transition:all .2s;font-size:13px;font-weight:500;color:var(--text2);
+  border-left:2px solid transparent;position:relative;
+}
+.sb-item:hover{color:var(--text);background:var(--green-pale);}
+.sb-item.on{color:var(--green);background:var(--green-pale);border-left-color:var(--green);}
+.sb-icon{font-size:16px;width:20px;text-align:center;}
+.sb-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-family:'IBM Plex Mono',monospace;}
+
+.sb-footer{padding:16px 20px;border-top:1px solid var(--border2);}
+.sb-user{display:flex;align-items:center;gap:10px;}
+.sb-avatar{width:32px;height:32px;border-radius:2px;background:var(--green-pale);border:1px solid var(--green-dim);display:flex;align-items:center;justify-content:center;font-size:14px;}
+.sb-uname{font-size:13px;font-weight:500;color:var(--text);}
+.sb-role{font-size:10px;color:var(--green);font-family:'IBM Plex Mono',monospace;}
+.sb-logout{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;transition:color .2s;}
+.sb-logout:hover{color:var(--red);}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+.topbar{
+  height:56px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;padding:0 24px;gap:16px;
+}
+.topbar-title{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text2);flex:1;}
+.topbar-title span{color:var(--green);}
+.tb-search{
+  display:flex;align-items:center;gap:8px;background:var(--bg);
+  border:1px solid var(--border2);border-radius:2px;padding:7px 12px;
+}
+.tb-search input{background:none;border:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none;width:180px;}
+.tb-search input::placeholder{color:var(--text3);}
+.tb-btn{
+  background:var(--green-pale);border:1px solid var(--green-dim);color:var(--green);
+  padding:7px 14px;border-radius:2px;font-family:'IBM Plex Mono',monospace;
+  font-size:11px;letter-spacing:1px;cursor:pointer;transition:all .2s;
+}
+.tb-btn:hover{background:rgba(0,201,110,.15);}
+
+.content{flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+
+/* ── PAGE ── */
+.page-view{display:none;}
+.page-view.on{display:block;animation:fadeIn .2s;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── STAT CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+@media(max-width:1200px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border2);border-radius:2px;
+  padding:18px 20px;position:relative;overflow:hidden;transition:border-color .2s;
+}
+.stat-card:hover{border-color:var(--border3);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-card.green::before{background:var(--green);}
+.stat-card.red::before{background:var(--red);}
+.stat-card.amber::before{background:var(--amber);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.stat-val{font-family:'IBM Plex Mono',monospace;font-size:28px;color:var(--text);font-weight:600;}
+.stat-change{font-size:11px;margin-top:6px;}
+.stat-up{color:var(--green);}
+.stat-down{color:var(--red);}
+.stat-neu{color:var(--text3);}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.sec-title{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;}
+.sec-action{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--green);cursor:pointer;text-decoration:none;}
+.sec-action:hover{text-decoration:underline;}
+
+/* ── PANELS ── */
+.panel{background:var(--surface);border:1px solid var(--border2);border-radius:2px;padding:20px;margin-bottom:20px;}
+.panel-2col{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+@media(max-width:1100px){.panel-2col{grid-template-columns:1fr;}}
+.panel-3col{display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;}
+@media(max-width:1100px){.panel-3col{grid-template-columns:1fr;}}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);
+  letter-spacing:1px;text-transform:uppercase;padding:10px 12px;
+  border-bottom:1px solid var(--border2);text-align:left;
+}
+tbody td{padding:10px 12px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);vertical-align:middle;}
+tbody tr:hover td{background:var(--green-pale);color:var(--text);}
+tbody tr:last-child td{border-bottom:none;}
+.tbl-mono{font-family:'IBM Plex Mono',monospace;font-size:12px;}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:3px 8px;border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+.badge-g{background:var(--green-pale);color:var(--green);border:1px solid var(--green-dim);}
+.badge-r{background:var(--red-soft);color:var(--red);}
+.badge-a{background:var(--amber-soft);color:var(--amber);}
+.badge-b{background:var(--blue-soft);color:var(--blue);}
+
+/* ── CHART WRAP ── */
+.chart-wrap{position:relative;height:220px;}
+
+/* ── ACTION BUTTONS ── */
+.action-btn{
+  background:none;border:1px solid var(--border2);color:var(--text3);
+  padding:5px 10px;border-radius:2px;font-family:'IBM Plex Mono',monospace;
+  font-size:10px;cursor:pointer;transition:all .2s;
+}
+.action-btn:hover{border-color:var(--green);color:var(--green);}
+.action-btn.danger:hover{border-color:var(--red);color:var(--red);}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+.form-grid.one{grid-template-columns:1fr;}
+.f-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.f-input,.f-select,.f-textarea{
+  width:100%;padding:10px 12px;background:var(--bg);
+  border:1px solid var(--border2);color:var(--text);
+  font-family:'IBM Plex Mono',monospace;font-size:13px;
+  border-radius:2px;outline:none;transition:border-color .2s;
+}
+.f-input:focus,.f-select:focus,.f-textarea:focus{border-color:var(--green);}
+.f-textarea{resize:vertical;min-height:80px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;}
+.f-select option{background:var(--surface);}
+
+/* ── TOGGLE ── */
+.toggle{position:relative;width:40px;height:22px;cursor:pointer;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-track{position:absolute;inset:0;background:var(--border2);border-radius:11px;transition:.2s;}
+.toggle input:checked + .toggle-track{background:var(--green-dim);}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:var(--text3);border-radius:50%;transition:.2s;}
+.toggle input:checked ~ .toggle-thumb{transform:translateX(18px);background:var(--green);}
+
+/* ── ACTIVITY FEED ── */
+.activity-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.activity-item:last-child{border-bottom:none;}
+.act-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.act-text{font-size:13px;color:var(--text2);flex:1;line-height:1.5;}
+.act-time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);}
+
+/* ── LOADING ── */
+.loading{text-align:center;padding:30px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text3);}
+.loading::after{content:'...';animation:dots 1.5s infinite;}
+@keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+
+/* ── NOTIFICATION ── */
+.notif{
+  position:fixed;top:20px;right:20px;z-index:1000;
+  background:var(--surface);border:1px solid var(--green-dim);
+  border-radius:2px;padding:12px 16px;font-family:'IBM Plex Mono',monospace;
+  font-size:12px;color:var(--green);max-width:300px;
+  animation:slideIn .3s ease;box-shadow:0 4px 20px rgba(0,0,0,.4);
+}
+.notif.error{border-color:var(--red);color:var(--red);}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <nav class="sidebar">
+    <div class="sb-logo">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;background:var(--green-pale);border:1px solid var(--green-dim);border-radius:2px;display:flex;align-items:center;justify-content:center;">🍃</div>
+        <div>
+          <div class="sb-logo-name">JUST ZERO</div>
+          <div class="sb-logo-tag">Admin v2.0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-nav">
+      <div class="sb-section">// OVERVIEW</div>
+      <div class="sb-item on" onclick="showPage('dashboard')"><div class="sb-icon">📊</div>Dashboard</div>
+      <div class="sb-item" onclick="showPage('analytics')"><div class="sb-icon">📈</div>Analytics</div>
+
+      <div class="sb-section">// MANAGEMENT</div>
+      <div class="sb-item" onclick="showPage('users')"><div class="sb-icon">👥</div>Users</div>
+      <div class="sb-item" onclick="showPage('orders')"><div class="sb-icon">🛒</div>Orders <span class="sb-badge" id="pending-count">—</span></div>
+      <div class="sb-item" onclick="showPage('lab-techs')"><div class="sb-icon">🔬</div>Lab Techs</div>
+
+      <div class="sb-section">// CONTENT</div>
+      <div class="sb-item" onclick="showPage('recipes')"><div class="sb-icon">🍛</div>Recipes</div>
+      <div class="sb-item" onclick="showPage('community')"><div class="sb-icon">💬</div>Community</div>
+
+      <div class="sb-section">// SYSTEM</div>
+      <div class="sb-item" onclick="showPage('notifications')"><div class="sb-icon">🔔</div>Notifications</div>
+      <div class="sb-item" onclick="showPage('settings')"><div class="sb-icon">⚙️</div>Settings</div>
+    </div>
+
+    <div class="sb-footer">
+      <div class="sb-user">
+        <div class="sb-avatar">👤</div>
+        <div><div class="sb-uname" id="admin-name">Admin</div><div class="sb-role">SUPERADMIN</div></div>
+        <button class="sb-logout" onclick="logout()" title="Logout">⏻</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title">// JUST ZERO ADMIN · <span id="page-title">DASHBOARD</span></div>
+      <div class="tb-search">
+        <span style="color:var(--text3);font-size:12px;">⌕</span>
+        <input placeholder="Search users, orders..." oninput="globalSearch(this.value)">
+      </div>
+      <button class="tb-btn" onclick="refreshData()">↺ REFRESH</button>
+      <button class="tb-btn" onclick="exportCSV()">↓ EXPORT</button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div id="pg-dashboard" class="page-view on">
+        <div class="stat-grid">
+          <div class="stat-card green">
+            <div class="stat-label">// TOTAL USERS</div>
+            <div class="stat-val" id="stat-users">—</div>
+            <div class="stat-change stat-up" id="stat-users-ch">Loading...</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-label">// PACKETS SOLD</div>
+            <div class="stat-val" id="stat-orders">—</div>
+            <div class="stat-change stat-up" id="stat-orders-ch">This month</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-label">// REVENUE (₹)</div>
+            <div class="stat-val" id="stat-revenue">—</div>
+            <div class="stat-change stat-up" id="stat-rev-ch">Total lifetime</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-label">// AVG HbA1c</div>
+            <div class="stat-val" id="stat-hba1c">—</div>
+            <div class="stat-change stat-neu">Community average</div>
+          </div>
+        </div>
+
+        <div class="panel-3col">
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// USER SIGNUPS — LAST 6 MONTHS</div></div>
+            <div class="chart-wrap"><canvas id="signup-chart" role="img" aria-label="User signups bar chart"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// ORDER CHANNELS</div></div>
+            <div class="chart-wrap"><canvas id="channel-chart" role="img" aria-label="Order channels pie chart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel-2col">
+          <div class="panel">
+            <div class="sec-hdr">
+              <div class="sec-title">// RECENT USERS</div>
+              <a class="sec-action" onclick="showPage('users')">VIEW ALL →</a>
+            </div>
+            <div id="recent-users"><div class="loading">Loading</div></div>
+          </div>
+          <div class="panel">
+            <div class="sec-hdr">
+              <div class="sec-title">// LIVE ACTIVITY</div>
+            </div>
+            <div id="activity-feed"><div class="loading">Loading</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ANALYTICS ── -->
+      <div id="pg-analytics" class="page-view">
+        <div class="panel">
+          <div class="sec-hdr"><div class="sec-title">// HbA1c IMPROVEMENT DISTRIBUTION</div></div>
+          <div class="chart-wrap" style="height:280px;"><canvas id="hba1c-dist" role="img" aria-label="HbA1c distribution chart"></canvas></div>
+        </div>
+        <div class="panel-2col">
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// DIABETES TYPE BREAKDOWN</div></div>
+            <div class="chart-wrap"><canvas id="dtype-chart" role="img" aria-label="Diabetes types chart"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// JUST ZERO USAGE BY DAY</div></div>
+            <div class="chart-wrap"><canvas id="usage-chart" role="img" aria-label="Usage chart"></canvas></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="sec-hdr"><div class="sec-title">// TOP CITIES</div></div>
+          <div id="cities-table"><div class="loading">Loading</div></div>
+        </div>
+      </div>
+
+      <!-- ── USERS ── -->
+      <div id="pg-users" class="page-view">
+        <div class="panel">
+          <div class="sec-hdr">
+            <div class="sec-title">// ALL USERS (<span id="user-count-lbl">—</span>)</div>
+            <div style="display:flex;gap:8px;">
+              <select class="f-select" style="width:auto;font-size:12px;padding:6px 10px;" id="user-filter" onchange="loadUsers()">
+                <option value="">All types</option>
+                <option value="type2">Type 2</option>
+                <option value="type1">Type 1</option>
+                <option value="prediabetic">Pre-diabetic</option>
+              </select>
+              <button class="tb-btn" onclick="loadUsers()">↺</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Name</th><th>City</th><th>Type</th>
+                <th>Latest HbA1c</th><th>Score</th><th>Orders</th><th>Joined</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="users-tbody"><tr><td colspan="8"><div class="loading">Loading</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ORDERS ── -->
+      <div id="pg-orders" class="page-view">
+        <div class="panel">
+          <div class="sec-hdr">
+            <div class="sec-title">// ORDERS</div>
+            <select class="f-select" style="width:auto;font-size:12px;padding:6px 10px;" id="order-filter" onchange="loadOrders()">
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Order #</th><th>User</th><th>Items</th>
+                <th>Total (₹)</th><th>Channel</th><th>Status</th><th>Date</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="orders-tbody"><tr><td colspan="8"><div class="loading">Loading</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LAB TECHS ── -->
+      <div id="pg-lab-techs" class="page-view">
+        <div class="panel-2col">
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// ADD LAB TECH</div></div>
+            <div class="form-grid">
+              <div><div class="f-label">Name</div><input class="f-input" id="lt-name" placeholder="Ramesh Kumar"></div>
+              <div><div class="f-label">Phone</div><input class="f-input" id="lt-phone" placeholder="9876543210"></div>
+              <div><div class="f-label">City</div><input class="f-input" id="lt-city" placeholder="Hyderabad"></div>
+              <div><div class="f-label">Commission (₹)</div><input class="f-input" type="number" id="lt-comm" value="60"></div>
+            </div>
+            <button class="tb-btn" style="width:100%;padding:10px;justify-content:center;" onclick="addLabTech()">+ ADD TECH</button>
+          </div>
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// REFERRAL STATS</div></div>
+            <div id="lt-stats">
+              <div class="stat-card green" style="margin-bottom:12px;"><div class="stat-label">TOTAL TECHS</div><div class="stat-val" id="lt-count">—</div></div>
+              <div class="stat-card amber"><div class="stat-label">TOTAL REFERRALS</div><div class="stat-val" id="lt-refs">—</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="sec-hdr"><div class="sec-title">// LAB TECH ROSTER</div></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Ref. Code</th><th>Referrals</th><th>Earnings (₹)</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="lt-tbody"><tr><td colspan="8"><div class="loading">Loading</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RECIPES ── -->
+      <div id="pg-recipes" class="page-view">
+        <div class="panel-2col">
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// ADD / EDIT RECIPE</div></div>
+            <div class="form-grid">
+              <div><div class="f-label">Title</div><input class="f-input" id="r-title" placeholder="Gulab Jamun (Sugar-Free)"></div>
+              <div><div class="f-label">Emoji</div><input class="f-input" id="r-emoji" placeholder="🍮" maxlength="4"></div>
+              <div><div class="f-label">GI Index</div><input class="f-input" type="number" id="r-gi" placeholder="28"></div>
+              <div><div class="f-label">Difficulty</div>
+                <select class="f-select" id="r-diff"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+              </div>
+              <div><div class="f-label">Tags (comma-sep)</div><input class="f-input" id="r-tags" placeholder="festival,dessert,just-zero"></div>
+              <div><div class="f-label">Calories / serving</div><input class="f-input" type="number" id="r-cal" placeholder="85"></div>
+            </div>
+            <div style="margin-bottom:12px;"><div class="f-label">Description</div><textarea class="f-textarea" id="r-desc" placeholder="Brief description..."></textarea></div>
+            <div style="display:flex;gap:10px;">
+              <button class="tb-btn" style="flex:1;padding:10px;" onclick="saveRecipe()">+ SAVE RECIPE</button>
+              <button class="action-btn" onclick="clearRecipeForm()">CLEAR</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// RECIPE LIST</div></div>
+            <div id="recipe-admin-list"><div class="loading">Loading</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── COMMUNITY ── -->
+      <div id="pg-community" class="page-view">
+        <div class="panel">
+          <div class="sec-hdr">
+            <div class="sec-title">// COMMUNITY POSTS (MODERATION)</div>
+            <select class="f-select" style="width:auto;font-size:12px;padding:6px 10px;" id="post-filter" onchange="loadAdminPosts()">
+              <option value="">All posts</option>
+              <option value="false">Needs approval</option>
+              <option value="true">Approved</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Category</th><th>Post</th><th>Likes</th><th>Replies</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="posts-tbody"><tr><td colspan="7"><div class="loading">Loading</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── NOTIFICATIONS ── -->
+      <div id="pg-notifications" class="page-view">
+        <div class="panel-2col">
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// SEND NOTIFICATION</div></div>
+            <div class="form-grid one">
+              <div><div class="f-label">Type</div>
+                <select class="f-select" id="n-type">
+                  <option value="system">System message</option>
+                  <option value="reorder_nudge">Reorder nudge</option>
+                  <option value="lab_reminder">Lab reminder</option>
+                  <option value="score_update">Score update</option>
+                </select>
+              </div>
+              <div><div class="f-label">Title</div><input class="f-input" id="n-title" placeholder="Notification title"></div>
+              <div><div class="f-label">Message</div><textarea class="f-textarea" id="n-body" placeholder="Notification body..."></textarea></div>
+              <div><div class="f-label">Target</div>
+                <select class="f-select" id="n-target">
+                  <option value="all">All users</option>
+                  <option value="hba1c_high">HbA1c > 8 (high risk)</option>
+                  <option value="no_order">No orders yet</option>
+                </select>
+              </div>
+            </div>
+            <button class="tb-btn" style="width:100%;padding:10px;" onclick="sendNotification()">📣 BROADCAST</button>
+          </div>
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// RECENT SENT</div></div>
+            <div id="notif-sent"><div class="loading">Loading</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div id="pg-settings" class="page-view">
+        <div class="panel-2col">
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// PRODUCT PRICING</div></div>
+            <div class="form-grid">
+              <div><div class="f-label">200g Powder (₹)</div><input class="f-input" value="800" id="p-200"></div>
+              <div><div class="f-label">3-Pack Bundle (₹)</div><input class="f-input" value="2400" id="p-3pack"></div>
+              <div><div class="f-label">Liquid Drops (₹)</div><input class="f-input" value="350" id="p-drops"></div>
+              <div><div class="f-label">Member Discount %</div><input class="f-input" value="10" id="p-disc"></div>
+            </div>
+            <button class="tb-btn" style="width:100%;padding:10px;" onclick="savePricing()">SAVE PRICING</button>
+          </div>
+          <div class="panel">
+            <div class="sec-hdr"><div class="sec-title">// FEATURE FLAGS</div></div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:13px;color:var(--text);">AI Lab Report Extraction</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">Auto-parse uploaded lab reports</div></div>
+                <label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:13px;color:var(--text);">In-App Store</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">Show Just Zero store to users</div></div>
+                <label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:13px;color:var(--text);">Community Moderation</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">Require approval before post goes live</div></div>
+                <label class="toggle"><input type="checkbox"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div><div style="font-size:13px;color:var(--text);">Reorder Nudge (Day 25)</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">Auto-send WhatsApp nudge at day 25</div></div>
+                <label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="sec-hdr"><div class="sec-title">// SUPABASE CONNECTION</div></div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--bg);border:1px solid var(--border2);border-radius:2px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--green);animation:blink 2s infinite;" id="db-status-dot"></div>
+            <div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);" id="db-status">Checking connection...</div><div style="font-size:11px;color:var(--text3);margin-top:2px;" id="db-url">—</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// SUPABASE CONFIG
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── AUTH GUARD ──
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'login-admin.html'; return; }
+  const { data: profile } = await sb.from('profiles').select('role, full_name').eq('id', session.user.id).single();
+  if (!profile || profile.role !== 'admin') { await sb.auth.signOut(); window.location.href = 'login-admin.html'; return; }
+  document.getElementById('admin-name').textContent = profile.full_name?.split(' ')[0] || 'Admin';
+  document.getElementById('db-status').textContent = 'Connected · ' + session.user.email;
+  document.getElementById('db-url').textContent = SUPABASE_URL;
+  initDashboard();
+})();
+
+// ── NAV ──
+function showPage(page) {
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'));
+  const pg = document.getElementById('pg-' + page);
+  if (pg) pg.classList.add('on');
+  event?.currentTarget?.classList.add('on');
+  document.getElementById('page-title').textContent = page.toUpperCase().replace('-', ' ');
+  const loaders = { users: loadUsers, orders: loadOrders, 'lab-techs': loadLabTechs, recipes: loadAdminRecipes, community: loadAdminPosts, notifications: loadNotifSent };
+  if (loaders[page]) loaders[page]();
+}
+
+// ── DASHBOARD INIT ──
+async function initDashboard() {
+  await Promise.all([loadStats(), loadRecentUsers(), loadActivityFeed()]);
+  initCharts();
+}
+
+async function loadStats() {
+  const [users, orders, labResults] = await Promise.all([
+    sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'user'),
+    sb.from('orders').select('total, status, created_at'),
+    sb.from('lab_results').select('hba1c').not('hba1c', 'is', null)
+  ]);
+  document.getElementById('stat-users').textContent = users.count || 0;
+  document.getElementById('stat-users-ch').textContent = '↑ Growing';
+  const delivered = (orders.data || []).filter(o => o.status === 'delivered');
+  document.getElementById('stat-orders').textContent = delivered.length;
+  const rev = (orders.data || []).reduce((s, o) => s + (o.total || 0), 0);
+  document.getElementById('stat-revenue').textContent = '₹' + Math.round(rev).toLocaleString('en-IN');
+  document.getElementById('stat-rev-ch').textContent = '↑ +' + delivered.length + ' delivered';
+  const pending = (orders.data || []).filter(o => o.status === 'pending').length;
+  document.getElementById('pending-count').textContent = pending;
+  const hba1cs = (labResults.data || []).map(r => r.hba1c).filter(Boolean);
+  const avgH = hba1cs.length ? (hba1cs.reduce((a, b) => a + b, 0) / hba1cs.length).toFixed(1) : '—';
+  document.getElementById('stat-hba1c').textContent = avgH + (avgH !== '—' ? '%' : '');
+}
+
+async function loadRecentUsers() {
+  const { data } = await sb.from('profiles').select('full_name, city, diabetes_type, created_at').eq('role', 'user').order('created_at', { ascending: false }).limit(6);
+  document.getElementById('recent-users').innerHTML = (data || []).map(u => `
+    <div class="activity-item">
+      <div class="act-dot" style="background:var(--green);"></div>
+      <div class="act-text"><strong>${u.full_name || 'Unnamed'}</strong>${u.city ? ' · ' + u.city : ''}<br><span style="font-size:11px;color:var(--text3);">${u.diabetes_type || 'type not set'}</span></div>
+      <div class="act-time">${timeSince(u.created_at)}</div>
+    </div>`).join('') || '<div class="loading">No users yet</div>';
+}
+
+async function loadActivityFeed() {
+  const [posts, orders, labs] = await Promise.all([
+    sb.from('community_posts').select('body, created_at, profiles(full_name)').order('created_at', { ascending: false }).limit(3),
+    sb.from('orders').select('order_number, total, created_at').order('created_at', { ascending: false }).limit(2),
+    sb.from('lab_results').select('hba1c, created_at, profiles(full_name)').order('created_at', { ascending: false }).limit(2)
+  ]);
+  const items = [
+    ...(posts.data || []).map(p => ({ text: `${p.profiles?.full_name||'User'} posted: "${p.body?.slice(0,50)}..."`, time: p.created_at, color: 'var(--blue)' })),
+    ...(orders.data || []).map(o => ({ text: `Order ${o.order_number} placed · ₹${o.total}`, time: o.created_at, color: 'var(--green)' })),
+    ...(labs.data || []).map(l => ({ text: `${l.profiles?.full_name||'User'} logged HbA1c: ${l.hba1c}%`, time: l.created_at, color: 'var(--amber)' })),
+  ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8);
+  document.getElementById('activity-feed').innerHTML = items.map(i => `
+    <div class="activity-item">
+      <div class="act-dot" style="background:${i.color};"></div>
+      <div class="act-text">${i.text}</div>
+      <div class="act-time">${timeSince(i.time)}</div>
+    </div>`).join('') || '<div class="loading">No activity yet</div>';
+}
+
+function initCharts() {
+  const mono = "'IBM Plex Mono', monospace";
+  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1f2e25' }, ticks: { color: '#5a7060', font: { family: mono, size: 10 } } }, y: { grid: { color: '#1f2e25' }, ticks: { color: '#5a7060', font: { family: mono, size: 10 } } } } };
+  new Chart(document.getElementById('signup-chart'), {
+    type: 'bar', data: { labels: ['Dec','Jan','Feb','Mar','Apr','May'], datasets: [{ data: [12,28,45,67,89,124], backgroundColor: 'rgba(0,201,110,0.4)', borderColor: '#00c96e', borderWidth: 1 }] }, options: opts
+  });
+  new Chart(document.getElementById('channel-chart'), {
+    type: 'doughnut', data: { labels: ['Amazon','D2C App','Influencer','WhatsApp','B2B'], datasets: [{ data: [40,27,20,8,5], backgroundColor: ['#00c96e','#4fc3f7','#ffb020','#ff5252','#9c88ff'], borderWidth: 0 }] },
+    options: { ...opts, scales: undefined, plugins: { legend: { display: true, position: 'right', labels: { color: '#9ab5a0', font: { family: mono, size: 10 }, boxWidth: 12 } } } }
+  });
+  new Chart(document.getElementById('hba1c-dist'), {
+    type: 'bar', data: { labels: ['<6.5%','6.5-7%','7-7.5%','7.5-8%','8-9%','>9%'], datasets: [{ label: 'Users', data: [15, 32, 45, 28, 19, 8], backgroundColor: ['#00c96e','#4fc3f7','#4fc3f7','#ffb020','#ff7043','#ff5252'], borderWidth: 0 }] }, options: { ...opts, plugins: { legend: { display: false } } }
+  });
+  new Chart(document.getElementById('dtype-chart'), {
+    type: 'pie', data: { labels: ['Type 2','Type 1','Pre-diabetic','Other'], datasets: [{ data: [65, 12, 18, 5], backgroundColor: ['#00c96e','#4fc3f7','#ffb020','#9c88ff'], borderWidth: 0 }] },
+    options: { ...opts, scales: undefined, plugins: { legend: { display: true, position: 'bottom', labels: { color: '#9ab5a0', font: { family: mono, size: 10 }, boxWidth: 12 } } } }
+  });
+  new Chart(document.getElementById('usage-chart'), {
+    type: 'line', data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ data: [45,67,55,78,89,92,88], borderColor: '#00c96e', backgroundColor: 'rgba(0,201,110,0.06)', fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#00c96e' }] }, options: opts
+  });
+}
+
+// ── USERS ──
+async function loadUsers() {
+  const filter = document.getElementById('user-filter')?.value;
+  let q = sb.from('v_user_stats').select('*').order('created_at', { ascending: false }).limit(50);
+  if (filter) q = q.eq('diabetes_type', filter);
+  const { data, count } = await q;
+  document.getElementById('user-count-lbl').textContent = data?.length || 0;
+  document.getElementById('users-tbody').innerHTML = (data || []).map(u => `
+    <tr>
+      <td>${u.full_name || '<span style="color:var(--text3)">Unnamed</span>'}</td>
+      <td>${u.city || '—'}</td>
+      <td><span class="badge badge-g">${u.diabetes_type || '?'}</span></td>
+      <td class="tbl-mono">${u.latest_hba1c ? u.latest_hba1c + '%' : '—'}</td>
+      <td class="tbl-mono">${u.latest_score || '—'}</td>
+      <td class="tbl-mono">${u.total_orders || 0}</td>
+      <td class="tbl-mono">${new Date(u.created_at).toLocaleDateString('en-IN')}</td>
+      <td><button class="action-btn" onclick="viewUser('${u.id}')">VIEW</button></td>
+    </tr>`).join('') || '<tr><td colspan="8" class="loading">No users found</td></tr>';
+}
+
+// ── ORDERS ──
+async function loadOrders() {
+  const filter = document.getElementById('order-filter')?.value;
+  let q = sb.from('orders').select('*, profiles(full_name)').order('created_at', { ascending: false }).limit(50);
+  if (filter) q = q.eq('status', filter);
+  const { data } = await q;
+  const statusBadge = s => s === 'delivered' ? 'badge-g' : s === 'pending' ? 'badge-a' : s === 'shipped' ? 'badge-b' : 'badge-r';
+  document.getElementById('orders-tbody').innerHTML = (data || []).map(o => `
+    <tr>
+      <td class="tbl-mono">${o.order_number}</td>
+      <td>${o.profiles?.full_name || '—'}</td>
+      <td>${(o.items_json || []).map(i => i.name).join(', ')}</td>
+      <td class="tbl-mono">₹${Math.round(o.total || 0).toLocaleString('en-IN')}</td>
+      <td><span class="badge badge-b">${o.channel}</span></td>
+      <td><span class="badge ${statusBadge(o.status)}">${o.status}</span></td>
+      <td class="tbl-mono">${new Date(o.created_at).toLocaleDateString('en-IN')}</td>
+      <td><select onchange="updateOrderStatus('${o.id}',this.value)" style="background:var(--bg);border:1px solid var(--border2);color:var(--text2);padding:4px 6px;border-radius:2px;font-size:11px;">
+        <option value="">— Update —</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="shipped">Shipped</option>
+        <option value="delivered">Delivered</option>
+        <option value="cancelled">Cancelled</option>
+      </select></td>
+    </tr>`).join('') || '<tr><td colspan="8" class="loading">No orders found</td></tr>';
+}
+
+async function updateOrderStatus(id, status) {
+  if (!status) return;
+  await sb.from('orders').update({ status }).eq('id', id);
+  showNotif('✓ Order status updated to ' + status);
+  loadOrders();
+}
+
+// ── LAB TECHS ──
+async function loadLabTechs() {
+  const { data, count } = await sb.from('lab_tech_referrals').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+  document.getElementById('lt-count').textContent = count || 0;
+  const totalRefs = (data || []).reduce((s, t) => s + (t.total_referrals || 0), 0);
+  document.getElementById('lt-refs').textContent = totalRefs;
+  document.getElementById('lt-tbody').innerHTML = (data || []).map(t => `
+    <tr>
+      <td>${t.tech_name}</td>
+      <td class="tbl-mono">${t.tech_phone}</td>
+      <td>${t.city || '—'}</td>
+      <td class="tbl-mono" style="color:var(--green);">${t.referral_code}</td>
+      <td class="tbl-mono">${t.total_referrals}</td>
+      <td class="tbl-mono">₹${t.total_earnings?.toLocaleString('en-IN') || 0}</td>
+      <td><span class="badge ${t.is_active ? 'badge-g' : 'badge-r'}">${t.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
+      <td>
+        <button class="action-btn" onclick="copyCode('${t.referral_code}')">COPY</button>
+        <button class="action-btn danger" onclick="deactivateTech('${t.id}')">DEACTIVATE</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="8" class="loading">No techs yet</td></tr>';
+}
+
+async function addLabTech() {
+  const name = document.getElementById('lt-name').value.trim();
+  const phone = document.getElementById('lt-phone').value.trim();
+  const city = document.getElementById('lt-city').value.trim();
+  const comm = parseFloat(document.getElementById('lt-comm').value) || 60;
+  if (!name || !phone) return showNotif('Name and phone required', true);
+  const { error } = await sb.from('lab_tech_referrals').insert({ tech_name: name, tech_phone: phone, city, commission_rate: comm });
+  if (error) return showNotif(error.message, true);
+  showNotif('✓ Lab tech added: ' + name);
+  ['lt-name','lt-phone','lt-city'].forEach(id => document.getElementById(id).value = '');
+  loadLabTechs();
+}
+
+async function deactivateTech(id) {
+  await sb.from('lab_tech_referrals').update({ is_active: false }).eq('id', id);
+  showNotif('Tech deactivated');
+  loadLabTechs();
+}
+
+function copyCode(code) {
+  navigator.clipboard?.writeText(code);
+  showNotif('✓ Copied: ' + code);
+}
+
+// ── RECIPES ──
+async function loadAdminRecipes() {
+  const { data } = await sb.from('recipes').select('*').order('title');
+  document.getElementById('recipe-admin-list').innerHTML = (data || []).map(r => `
+    <div class="activity-item">
+      <div style="font-size:20px;">${r.emoji||'🍛'}</div>
+      <div class="act-text">
+        <strong>${r.title}</strong> · GI ${r.gi_index||'?'}
+        <br><span style="font-size:11px;color:var(--text3);">${(r.tags||[]).join(', ')}</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="badge ${r.is_published ? 'badge-g' : 'badge-a'}">${r.is_published ? 'LIVE' : 'DRAFT'}</span>
+        <button class="action-btn danger" onclick="toggleRecipe('${r.id}',${r.is_published})">${r.is_published ? 'UNPUBLISH' : 'PUBLISH'}</button>
+      </div>
+    </div>`).join('') || '<div class="loading">No recipes yet</div>';
+}
+
+async function saveRecipe() {
+  const title = document.getElementById('r-title').value.trim();
+  if (!title) return showNotif('Title required', true);
+  const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const tags = document.getElementById('r-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  const { error } = await sb.from('recipes').insert({
+    slug, title, emoji: document.getElementById('r-emoji').value,
+    gi_index: parseInt(document.getElementById('r-gi').value) || null,
+    difficulty: document.getElementById('r-diff').value,
+    tags, description: document.getElementById('r-desc').value,
+    calories_per_serving: parseInt(document.getElementById('r-cal').value) || null,
+    uses_just_zero: true, is_published: true
+  });
+  if (error) return showNotif(error.message.includes('unique') ? 'Slug already exists, change title' : error.message, true);
+  showNotif('✓ Recipe saved: ' + title);
+  clearRecipeForm();
+  loadAdminRecipes();
+}
+
+async function toggleRecipe(id, current) {
+  await sb.from('recipes').update({ is_published: !current }).eq('id', id);
+  loadAdminRecipes();
+}
+
+function clearRecipeForm() {
+  ['r-title','r-emoji','r-gi','r-tags','r-cal','r-desc'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── COMMUNITY ──
+async function loadAdminPosts() {
+  const filter = document.getElementById('post-filter')?.value;
+  let q = sb.from('community_posts').select('*, profiles(full_name)').order('created_at', { ascending: false }).limit(30);
+  if (filter !== '') q = q.eq('is_approved', filter === 'true');
+  const { data } = await q;
+  document.getElementById('posts-tbody').innerHTML = (data || []).map(p => `
+    <tr>
+      <td>${p.profiles?.full_name || '—'}</td>
+      <td><span class="badge badge-b">${p.category||'general'}</span></td>
+      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.body}</td>
+      <td class="tbl-mono">${p.likes_count}</td>
+      <td class="tbl-mono">${p.replies_count}</td>
+      <td><span class="badge ${p.is_approved ? 'badge-g' : 'badge-a'}">${p.is_approved ? 'APPROVED' : 'PENDING'}</span></td>
+      <td>
+        <button class="action-btn" onclick="approvePost('${p.id}',${p.is_approved})">${p.is_approved ? 'UNAPPROVE' : 'APPROVE'}</button>
+        <button class="action-btn danger" onclick="deletePost('${p.id}')">DELETE</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="7" class="loading">No posts</td></tr>';
+}
+
+async function approvePost(id, current) {
+  await sb.from('community_posts').update({ is_approved: !current }).eq('id', id);
+  showNotif('Post ' + (!current ? 'approved' : 'unapproved'));
+  loadAdminPosts();
+}
+
+async function deletePost(id) {
+  if (!confirm('Delete this post?')) return;
+  await sb.from('community_posts').delete().eq('id', id);
+  showNotif('Post deleted');
+  loadAdminPosts();
+}
+
+// ── NOTIFICATIONS ──
+async function sendNotification() {
+  const type = document.getElementById('n-type').value;
+  const title = document.getElementById('n-title').value.trim();
+  const body = document.getElementById('n-body').value.trim();
+  if (!title || !body) return showNotif('Title and message required', true);
+  const { data: users } = await sb.from('profiles').select('id').eq('role', 'user').eq('is_active', true);
+  if (!users?.length) return showNotif('No users to notify', true);
+  const notifs = users.map(u => ({ user_id: u.id, type, title, body }));
+  const { error } = await sb.from('notifications').insert(notifs);
+  if (error) return showNotif(error.message, true);
+  showNotif(`✓ Sent to ${users.length} users`);
+  ['n-title','n-body'].forEach(id => document.getElementById(id).value = '');
+  loadNotifSent();
+}
+
+async function loadNotifSent() {
+  const { data } = await sb.from('notifications').select('title, type, created_at').order('created_at', { ascending: false }).limit(8);
+  document.getElementById('notif-sent').innerHTML = (data || []).map(n => `
+    <div class="activity-item">
+      <div class="act-dot" style="background:var(--blue);"></div>
+      <div class="act-text"><strong>${n.title}</strong><br><span style="font-size:11px;color:var(--text3);">${n.type}</span></div>
+      <div class="act-time">${timeSince(n.created_at)}</div>
+    </div>`).join('') || '<div style="color:var(--text3);font-size:13px;">No notifications sent yet</div>';
+}
+
+// ── SETTINGS ──
+async function savePricing() { showNotif('✓ Pricing saved (store config only — wire to your product table)'); }
+
+// ── HELPERS ──
+function timeSince(ts) {
+  const d = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (d < 60) return 'just now';
+  if (d < 3600) return Math.floor(d/60) + 'm ago';
+  if (d < 86400) return Math.floor(d/3600) + 'h ago';
+  return Math.floor(d/86400) + 'd ago';
+}
+
+function showNotif(msg, isError = false) {
+  const el = document.createElement('div');
+  el.className = 'notif' + (isError ? ' error' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function viewUser(id) { showNotif('Opening user profile: ' + id.slice(0,8) + '...'); }
+async function logout() { await sb.auth.signOut(); window.location.href = 'login-admin.html'; }
+function refreshData() { initDashboard(); showNotif('✓ Data refreshed'); }
+function globalSearch(q) { if (q.length > 2) showNotif('Search: ' + q + ' (wire to Supabase full-text search)'); }
+function exportCSV() { showNotif('Exporting CSV... (wire to Supabase RPC or Edge Function)'); }
+</script>
+</body>
+</html>

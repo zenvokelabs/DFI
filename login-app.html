@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just Zero — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── CONFIG: paste your Supabase keys in the <script> below ── */
+:root {
+  --forest:   #1a3c2e;
+  --green:    #2d6a4f;
+  --leaf:     #52b788;
+  --mint:     #b7e4c7;
+  --pale:     #f0faf2;
+  --cream:    #faf9f6;
+  --bark:     #5c4a32;
+  --text:     #1a1a1a;
+  --muted:    #6b7280;
+  --border:   #d1e8da;
+  --red:      #dc2626;
+  --shadow:   0 4px 24px rgba(26,60,46,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);}
+
+/* ── LAYOUT ── */
+.page {
+  min-height:100vh;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+}
+@media(max-width:768px){.page{grid-template-columns:1fr;}.panel-art{display:none!important;}}
+
+/* ── ART PANEL ── */
+.panel-art {
+  background: var(--forest);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 48px;
+}
+.art-bg {
+  position:absolute;inset:0;
+  background: radial-gradient(ellipse 80% 60% at 30% 40%, #2d6a4f 0%, #1a3c2e 100%);
+}
+/* organic blobs */
+.blob {
+  position:absolute;border-radius:50%;opacity:0.08;background:#52b788;
+  animation: drift 8s ease-in-out infinite alternate;
+}
+.blob-1{width:300px;height:300px;top:-80px;right:-80px;animation-delay:0s;}
+.blob-2{width:200px;height:200px;bottom:40px;left:-60px;animation-delay:2s;}
+.blob-3{width:150px;height:150px;top:40%;right:10%;animation-delay:4s;}
+@keyframes drift{from{transform:translate(0,0) scale(1);}to{transform:translate(20px,30px) scale(1.05);}}
+
+.art-content{position:relative;z-index:1;text-align:center;}
+.art-logo{font-family:'Playfair Display',serif;font-size:42px;color:#fff;letter-spacing:-1px;line-height:1;}
+.art-tagline{font-size:14px;color:rgba(255,255,255,0.55);margin-top:6px;font-weight:300;letter-spacing:1px;text-transform:uppercase;}
+.art-divider{width:48px;height:2px;background:var(--leaf);margin:32px auto;}
+
+.art-stats{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:36px;}
+.stat-box{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;text-align:left;}
+.stat-num{font-family:'Playfair Display',serif;font-size:32px;color:#fff;}
+.stat-label{font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;}
+
+.art-quote{
+  margin-top:40px;padding:20px 24px;
+  background:rgba(255,255,255,0.05);border-left:3px solid var(--leaf);
+  border-radius:0 12px 12px 0;text-align:left;
+}
+.art-quote-text{font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:rgba(255,255,255,0.8);line-height:1.6;}
+.art-quote-name{font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;}
+
+/* ── FORM PANEL ── */
+.panel-form{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:48px 40px;background:var(--cream);
+}
+@media(max-width:768px){.panel-form{padding:40px 24px;}}
+
+.form-card{width:100%;max-width:420px;}
+.mobile-logo{display:none;text-align:center;margin-bottom:36px;}
+@media(max-width:768px){.mobile-logo{display:block;}}
+.mobile-logo-text{font-family:'Playfair Display',serif;font-size:34px;color:var(--forest);}
+.mobile-logo-tag{font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:1px;text-transform:uppercase;}
+
+.form-title{font-family:'Playfair Display',serif;font-size:30px;color:var(--forest);line-height:1.2;}
+.form-sub{font-size:14px;color:var(--muted);margin-top:8px;line-height:1.5;}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--pale);border-radius:12px;padding:4px;margin:28px 0 24px;border:1px solid var(--border);}
+.tab{flex:1;padding:10px;text-align:center;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:9px;transition:all .2s;}
+.tab.active{background:#fff;color:var(--forest);font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+
+/* ── INPUTS ── */
+.field{margin-bottom:18px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--forest);margin-bottom:7px;letter-spacing:0.3px;text-transform:uppercase;}
+.field-wrap{position:relative;display:flex;align-items:center;}
+.field input,.field select{
+  width:100%;padding:13px 44px 13px 16px;
+  background:#fff;border:1.5px solid var(--border);border-radius:12px;
+  font-family:'Outfit',sans-serif;font-size:15px;color:var(--text);
+  transition:all .2s;outline:none;appearance:none;
+}
+.field input:focus,.field select:focus{border-color:var(--leaf);box-shadow:0 0 0 3px rgba(82,183,136,0.12);}
+.field-icon{position:absolute;right:14px;font-size:18px;color:var(--muted);pointer-events:none;}
+.eye-toggle{position:absolute;right:14px;background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted);padding:0;}
+
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* ── BUTTON ── */
+.btn-primary{
+  width:100%;padding:15px;background:var(--forest);color:#fff;
+  border:none;border-radius:12px;font-family:'Outfit',sans-serif;
+  font-size:16px;font-weight:600;cursor:pointer;
+  transition:all .25s;position:relative;overflow:hidden;
+  letter-spacing:0.3px;
+}
+.btn-primary::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.07),transparent);
+}
+.btn-primary:hover{background:#0f2c1e;transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,60,46,0.3);}
+.btn-primary:active{transform:translateY(0);}
+.btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
+
+.btn-google{
+  width:100%;padding:13px;background:#fff;color:var(--text);
+  border:1.5px solid var(--border);border-radius:12px;
+  font-family:'Outfit',sans-serif;font-size:15px;font-weight:500;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .2s;margin-top:10px;
+}
+.btn-google:hover{border-color:var(--leaf);background:var(--pale);}
+
+.divider-or{display:flex;align-items:center;gap:12px;margin:18px 0;}
+.divider-or::before,.divider-or::after{content:'';flex:1;height:1px;background:var(--border);}
+.divider-or span{font-size:12px;color:var(--muted);font-weight:500;}
+
+/* ── MESSAGES ── */
+.msg{padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none;}
+.msg-error{background:#fef2f2;border:1px solid #fecaca;color:var(--red);}
+.msg-success{background:#f0faf2;border:1px solid var(--mint);color:var(--forest);}
+.msg.show{display:block;}
+
+/* ── LOADING SPINNER ── */
+.spinner{display:inline-block;width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── STRENGTH METER ── */
+.strength{margin-top:6px;height:4px;border-radius:2px;background:var(--border);overflow:hidden;}
+.strength-fill{height:100%;border-radius:2px;transition:all .3s;width:0;}
+
+.form-footer{text-align:center;margin-top:20px;font-size:13px;color:var(--muted);}
+.form-footer a{color:var(--green);font-weight:600;text-decoration:none;}
+.form-footer a:hover{text-decoration:underline;}
+
+.terms{font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5;}
+.terms a{color:var(--green);}
+
+/* ── DIABETES TYPE SELECTOR ── */
+.type-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:4px;}
+.type-btn{
+  padding:10px 8px;background:#fff;border:1.5px solid var(--border);
+  border-radius:10px;font-family:'Outfit',sans-serif;font-size:12px;
+  font-weight:500;color:var(--muted);cursor:pointer;transition:all .2s;text-align:center;
+}
+.type-btn.selected{background:var(--pale);border-color:var(--leaf);color:var(--forest);font-weight:600;}
+
+/* ── OTP VERIFY ── */
+.otp-wrap{display:flex;gap:10px;justify-content:center;margin:20px 0;}
+.otp-input{
+  width:52px;height:56px;text-align:center;font-size:22px;font-weight:600;
+  background:#fff;border:1.5px solid var(--border);border-radius:12px;
+  font-family:'Outfit',sans-serif;color:var(--forest);outline:none;transition:all .2s;
+}
+.otp-input:focus{border-color:var(--leaf);box-shadow:0 0 0 3px rgba(82,183,136,0.12);}
+
+/* ── FORGOT PW ── */
+.forgot-link{font-size:12px;color:var(--green);float:right;text-decoration:none;font-weight:500;}
+.forgot-link:hover{text-decoration:underline;}
+
+/* ── FORM STEPS ── */
+.form-step{display:none;}
+.form-step.active{display:block;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+.step-indicator{display:flex;align-items:center;gap:8px;margin-bottom:20px;}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;border:2px solid var(--border);color:var(--muted);transition:all .3s;}
+.step-dot.done{background:var(--leaf);border-color:var(--leaf);color:#fff;}
+.step-dot.active{background:var(--forest);border-color:var(--forest);color:#fff;}
+.step-line{flex:1;height:2px;background:var(--border);border-radius:1px;}
+.step-line.done{background:var(--leaf);}
+
+</style>
+</head>
+<body>
+
+<div class="page">
+  <!-- ── ART PANEL ── -->
+  <div class="panel-art">
+    <div class="art-bg"></div>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="art-content">
+      <div class="art-logo">Just Zero</div>
+      <div class="art-tagline">Live sweet. Stay healthy.</div>
+      <div class="art-divider"></div>
+      <div class="art-stats">
+        <div class="stat-box">
+          <div class="stat-num">87M</div>
+          <div class="stat-label">Diabetics in India</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">GI 0</div>
+          <div class="stat-label">Monk Fruit + Allulose</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">2.4K</div>
+          <div class="stat-label">Community members</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">−0.9%</div>
+          <div class="stat-label">Avg HbA1c drop</div>
+        </div>
+      </div>
+      <div class="art-quote">
+        <div class="art-quote-text">"My HbA1c went from 8.1 to 7.2 in 5 months. Just swapped chai sugar with Just Zero."</div>
+        <div class="art-quote-name">— Suresh K., Hyderabad · Member since 2025</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FORM PANEL ── -->
+  <div class="panel-form">
+    <div class="form-card">
+
+      <!-- Mobile Logo -->
+      <div class="mobile-logo">
+        <div class="mobile-logo-text">Just Zero 🍃</div>
+        <div class="mobile-logo-tag">Diabetic Health App</div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" id="tab-signin" onclick="switchTab('signin')">Sign In</div>
+        <div class="tab" id="tab-signup" onclick="switchTab('signup')">Create Account</div>
+      </div>
+
+      <!-- Error / Success -->
+      <div class="msg msg-error" id="msg-error"></div>
+      <div class="msg msg-success" id="msg-success"></div>
+
+      <!-- ── SIGN IN FORM ── -->
+      <div class="form-step active" id="step-signin">
+        <div class="form-title">Welcome back</div>
+        <div class="form-sub">Log in to track your sugar diary and health score.</div>
+        <br>
+        <div class="field">
+          <label>Email address</label>
+          <div class="field-wrap">
+            <input type="email" id="signin-email" placeholder="you@example.com" autocomplete="email">
+            <span class="field-icon">✉️</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Password <a href="#" class="forgot-link" onclick="showForgot(event)">Forgot?</a></label>
+          <div class="field-wrap">
+            <input type="password" id="signin-password" placeholder="••••••••" autocomplete="current-password">
+            <button class="eye-toggle" type="button" onclick="toggleEye('signin-password',this)">👁️</button>
+          </div>
+        </div>
+        <button class="btn-primary" id="signin-btn" onclick="signIn()">Sign In</button>
+        <div class="divider-or"><span>or</span></div>
+        <button class="btn-google" onclick="signInGoogle()">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/></svg>
+          Continue with Google
+        </button>
+        <div class="form-footer">New here? <a href="#" onclick="switchTab('signup'); return false;">Create a free account</a></div>
+      </div>
+
+      <!-- ── SIGN UP — STEP 1: Account ── -->
+      <div class="form-step" id="step-signup-1">
+        <div class="step-indicator">
+          <div class="step-dot active" id="sd1">1</div>
+          <div class="step-line" id="sl1"></div>
+          <div class="step-dot" id="sd2">2</div>
+          <div class="step-line" id="sl2"></div>
+          <div class="step-dot" id="sd3">3</div>
+        </div>
+        <div class="form-title">Create your account</div>
+        <div class="form-sub">Start tracking your diabetes health journey.</div><br>
+        <div class="field-row">
+          <div class="field"><label>First name</label><div class="field-wrap"><input type="text" id="su-fname" placeholder="Ravi"></div></div>
+          <div class="field"><label>Last name</label><div class="field-wrap"><input type="text" id="su-lname" placeholder="Kumar"></div></div>
+        </div>
+        <div class="field">
+          <label>Email address</label>
+          <div class="field-wrap"><input type="email" id="su-email" placeholder="ravi@example.com"></div>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <div class="field-wrap">
+            <input type="password" id="su-password" placeholder="Minimum 8 characters" oninput="checkStrength(this.value)">
+            <button class="eye-toggle" type="button" onclick="toggleEye('su-password',this)">👁️</button>
+          </div>
+          <div class="strength"><div class="strength-fill" id="strength-fill"></div></div>
+        </div>
+        <button class="btn-primary" onclick="goStep2()">Continue →</button>
+        <div class="divider-or"><span>or</span></div>
+        <button class="btn-google" onclick="signInGoogle()">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/></svg>
+          Sign up with Google
+        </button>
+        <div class="form-footer">Already have an account? <a href="#" onclick="switchTab('signin'); return false;">Sign in</a></div>
+      </div>
+
+      <!-- ── SIGN UP — STEP 2: Health Profile ── -->
+      <div class="form-step" id="step-signup-2">
+        <div class="step-indicator">
+          <div class="step-dot done" id="sd1b">✓</div>
+          <div class="step-line done" id="sl1b"></div>
+          <div class="step-dot active" id="sd2b">2</div>
+          <div class="step-line" id="sl2b"></div>
+          <div class="step-dot" id="sd3b">3</div>
+        </div>
+        <div class="form-title">Your health profile</div>
+        <div class="form-sub">This helps us personalise your sugar diary.</div><br>
+        <div class="field">
+          <label>Diabetes type</label>
+          <div class="type-grid" id="type-grid">
+            <button class="type-btn" onclick="selectType(this,'type2')">🩸 Type 2</button>
+            <button class="type-btn" onclick="selectType(this,'type1')">💉 Type 1</button>
+            <button class="type-btn" onclick="selectType(this,'prediabetic')">⚠️ Pre-diabetic</button>
+            <button class="type-btn" onclick="selectType(this,'other')">❓ Other / Not sure</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>City</label><div class="field-wrap"><input type="text" id="su-city" placeholder="Hyderabad"></div></div>
+          <div class="field"><label>Phone (optional)</label><div class="field-wrap"><input type="tel" id="su-phone" placeholder="9876543210"></div></div>
+        </div>
+        <div class="field">
+          <label>Latest HbA1c % (optional)</label>
+          <div class="field-wrap"><input type="number" id="su-hba1c" placeholder="e.g. 7.2" step="0.1" min="3" max="15"><span class="field-icon">🩸</span></div>
+        </div>
+        <button class="btn-primary" onclick="goStep3()">Continue →</button>
+        <br><a href="#" style="display:block;text-align:center;margin-top:12px;font-size:13px;color:var(--muted);" onclick="showStep('signup-1')">← Back</a>
+      </div>
+
+      <!-- ── SIGN UP — STEP 3: Verify Email ── -->
+      <div class="form-step" id="step-signup-3">
+        <div class="step-indicator">
+          <div class="step-dot done">✓</div>
+          <div class="step-line done"></div>
+          <div class="step-dot done">✓</div>
+          <div class="step-line done"></div>
+          <div class="step-dot active">3</div>
+        </div>
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:56px;">📧</div>
+          <div class="form-title" style="margin-top:12px;">Check your email</div>
+          <div class="form-sub" style="margin-top:8px;">We sent a confirmation link to <strong id="confirm-email-display"></strong>. Click it to activate your account.</div>
+          <br>
+          <button class="btn-primary" onclick="resendEmail()">Resend email</button>
+          <div class="form-footer" style="margin-top:12px;"><a href="#" onclick="switchTab('signin'); return false;">Back to sign in</a></div>
+        </div>
+      </div>
+
+      <!-- ── FORGOT PASSWORD ── -->
+      <div class="form-step" id="step-forgot">
+        <a href="#" style="font-size:13px;color:var(--muted);display:inline-block;margin-bottom:20px;" onclick="switchTab('signin'); return false;">← Back to sign in</a>
+        <div class="form-title">Reset password</div>
+        <div class="form-sub">Enter your email and we'll send a reset link.</div><br>
+        <div class="field">
+          <label>Email address</label>
+          <div class="field-wrap"><input type="email" id="forgot-email" placeholder="you@example.com"><span class="field-icon">✉️</span></div>
+        </div>
+        <button class="btn-primary" onclick="sendReset()">Send reset link</button>
+      </div>
+
+      <div class="terms">By continuing you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// SUPABASE CONFIG — replace with your keys
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const APP_URL = 'app.html'; // redirect after login
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Check if already logged in
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) window.location.href = APP_URL;
+})();
+
+// ── AUTH FUNCTIONS ──
+let selectedType = '';
+
+async function signIn() {
+  const email = v('signin-email'), pw = v('signin-password');
+  if (!email || !pw) return showError('Please fill in all fields.');
+  setLoading('signin-btn', true);
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  setLoading('signin-btn', false);
+  if (error) return showError(error.message);
+  window.location.href = APP_URL;
+}
+
+async function signInGoogle() {
+  await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/' + APP_URL } });
+}
+
+async function goStep2() {
+  const fname = v('su-fname'), lname = v('su-lname'), email = v('su-email'), pw = v('su-password');
+  if (!fname || !email || !pw) return showError('Please fill in all required fields.');
+  if (pw.length < 8) return showError('Password must be at least 8 characters.');
+  clearMsg();
+  showStep('signup-2');
+}
+
+async function goStep3() {
+  const email = v('su-email'), pw = v('su-password');
+  const fname = v('su-fname'), lname = v('su-lname');
+  setLoading('signup-3-btn', true);
+  const { data, error } = await sb.auth.signUp({
+    email, password: pw,
+    options: {
+      data: { full_name: fname + ' ' + lname },
+      emailRedirectTo: window.location.origin + '/' + APP_URL
+    }
+  });
+  if (error) { showError(error.message); return; }
+  // save extra profile fields
+  if (data.user) {
+    await sb.from('profiles').update({
+      diabetes_type: selectedType || null,
+      city: v('su-city') || null,
+      phone: v('su-phone') || null,
+    }).eq('id', data.user.id);
+    if (v('su-hba1c')) {
+      await sb.from('lab_results').insert({
+        user_id: data.user.id, test_date: new Date().toISOString().split('T')[0],
+        hba1c: parseFloat(v('su-hba1c'))
+      });
+    }
+  }
+  document.getElementById('confirm-email-display').textContent = email;
+  showStep('signup-3');
+}
+
+async function sendReset() {
+  const email = v('forgot-email');
+  if (!email) return showError('Enter your email address.');
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password.html' });
+  if (error) return showError(error.message);
+  showSuccess('Reset link sent! Check your inbox.');
+}
+
+async function resendEmail() {
+  const email = v('su-email');
+  await sb.auth.resend({ type: 'signup', email });
+  showSuccess('Email resent!');
+}
+
+// ── UI HELPERS ──
+function v(id) { return document.getElementById(id)?.value?.trim(); }
+
+function switchTab(tab) {
+  clearMsg();
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  showStep(tab === 'signin' ? 'signin' : 'signup-1');
+}
+
+function showStep(step) {
+  document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + step)?.classList.add('active');
+}
+
+function showForgot(e) { e.preventDefault(); clearMsg(); showStep('forgot'); }
+
+function showError(msg) {
+  const el = document.getElementById('msg-error');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
+  document.getElementById('msg-success').classList.remove('show');
+}
+function showSuccess(msg) {
+  const el = document.getElementById('msg-success');
+  el.textContent = '✓ ' + msg;
+  el.classList.add('show');
+  document.getElementById('msg-error').classList.remove('show');
+}
+function clearMsg() {
+  document.getElementById('msg-error').classList.remove('show');
+  document.getElementById('msg-success').classList.remove('show');
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="spinner"></span>Please wait...' : btn.dataset.orig || btn.innerHTML;
+  if (!loading && btn.dataset.orig) btn.innerHTML = btn.dataset.orig;
+}
+
+function toggleEye(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isText = input.type === 'text';
+  input.type = isText ? 'password' : 'text';
+  btn.textContent = isText ? '👁️' : '🙈';
+}
+
+function checkStrength(pw) {
+  const fill = document.getElementById('strength-fill');
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const colors = ['','#dc2626','#f59e0b','#10b981','#059669'];
+  fill.style.width = (score * 25) + '%';
+  fill.style.background = colors[score] || '#dc2626';
+}
+
+function selectType(btn, type) {
+  selectedType = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+// Store original btn text
+document.querySelectorAll('.btn-primary').forEach(btn => { btn.dataset.orig = btn.innerHTML; });
+
+// Enter key submits
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const active = document.querySelector('.form-step.active');
+    if (active?.id === 'step-signin') signIn();
+  }
+});
+</script>
+</body>
+</html>

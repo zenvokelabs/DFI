@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Just Zero App</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --forest:#1a3c2e;--green:#2d6a4f;--leaf:#52b788;--mint:#b7e4c7;
+  --pale:#f0faf2;--cream:#faf9f6;--amber:#e76f00;--amber-soft:#fff3e0;
+  --red:#dc2626;--red-soft:#fef2f2;--blue:#1a73e8;--blue-soft:#eef4ff;
+  --text:#1a1a1a;--muted:#6b7280;--muted2:#9ca3af;--border:#e5e7eb;
+  --bg:#f7f9fb;--white:#fff;--shadow:0 2px 12px rgba(0,0,0,0.07);
+  --radius:16px;--radius-sm:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'Outfit',sans-serif;background:#e2e8f0;overflow:hidden;}
+
+/* ── PHONE SHELL ── */
+.phone{
+  width:390px;height:844px;background:var(--bg);border-radius:44px;
+  overflow:hidden;position:relative;margin:0 auto;
+  box-shadow:0 30px 80px rgba(0,0,0,0.25),inset 0 0 0 1px rgba(255,255,255,0.5);
+}
+@media(max-width:420px){
+  body{background:var(--bg);}
+  .phone{width:100%;height:100vh;border-radius:0;box-shadow:none;}
+}
+.screen{display:none;height:100%;flex-direction:column;overflow:hidden;}
+.screen.active{display:flex;}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* ── STATUS BAR ── */
+.sbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px 0;font-size:12px;font-weight:600;flex-shrink:0;}
+
+/* ── BOTTOM NAV ── */
+.nav{display:flex;background:var(--white);border-top:1px solid var(--border);padding:8px 0 20px;flex-shrink:0;}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;transition:all .2s;}
+.nav-i .icon{font-size:22px;line-height:1;}
+.nav-i .lbl{font-size:10px;font-weight:500;color:var(--muted2);}
+.nav-i.on .lbl{color:var(--green);font-weight:600;}
+.nav-i.on .icon{transform:scale(1.1);}
+
+/* ── CARDS ── */
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);}
+.px{padding:18px;}
+
+/* ── CHIPS ── */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;}
+.chip-g{background:#d1fae5;color:#065f46;}
+.chip-a{background:var(--amber-soft);color:var(--amber);}
+.chip-r{background:var(--red-soft);color:var(--red);}
+.chip-b{background:var(--blue-soft);color:var(--blue);}
+.chip-gr{background:var(--border);color:var(--muted);}
+
+/* ── BUTTONS ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:var(--radius-sm);border:none;font-family:'Outfit',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;width:100%;}
+.btn-g{background:var(--forest);color:#fff;}
+.btn-g:active{background:#0f2c1e;transform:scale(.98);}
+.btn-out{background:transparent;border:1.5px solid var(--green);color:var(--green);}
+.btn-soft{background:var(--pale);color:var(--green);}
+.btn-sm{padding:9px 16px;font-size:13px;width:auto;}
+
+/* ── SECTION LABEL ── */
+.slbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);margin-bottom:10px;}
+
+/* ── HOME ── */
+.banner{margin:16px 20px;background:linear-gradient(135deg,var(--forest),#2d6a4f);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
+.banner::after{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05);}
+.bnum{font-family:'Playfair Display',serif;font-size:52px;color:#fff;line-height:1;}
+.b-sub{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;}
+.b-badge{display:inline-block;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px;font-size:11px;color:#fff;margin-top:8px;}
+
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 20px 20px;}
+.qa{background:var(--white);border-radius:var(--radius-sm);padding:16px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;}
+.qa:active{transform:scale(.97);}
+.qa-icon{font-size:28px;margin-bottom:8px;}
+.qa-t{font-size:13px;font-weight:600;color:var(--text);}
+.qa-s{font-size:11px;color:var(--muted2);margin-top:2px;}
+
+/* ── DIARY ── */
+.gi-bar{height:8px;border-radius:4px;background:linear-gradient(to right,#52b788,#ef9f27,#e53935);position:relative;}
+.gi-needle{position:absolute;top:-4px;width:16px;height:16px;background:var(--white);border-radius:50%;border:2.5px solid var(--text);transform:translateX(-50%);transition:left .5s cubic-bezier(.34,1.56,.64,1);box-shadow:0 2px 6px rgba(0,0,0,.15);}
+.food-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;}
+.food-item:active{transform:scale(.98);}
+.fi-gi{padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;}
+.gi-safe{background:#d1fae5;color:#065f46;}
+.gi-caution{background:var(--amber-soft);color:var(--amber);}
+.gi-spike{background:var(--red-soft);color:var(--red);}
+
+/* ── LAB ── */
+.hba1c-val{font-family:'Playfair Display',serif;font-size:52px;color:var(--text);line-height:1;}
+.prog-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:3px;transition:width .6s;}
+
+.hist-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--white);border-radius:var(--radius-sm);margin-bottom:6px;box-shadow:var(--shadow);}
+
+/* ── RECIPE ── */
+.pop-recipe{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--white);border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;}
+.pop-recipe:active{transform:scale(.98);}
+
+/* ── COMMUNITY ── */
+.post{background:var(--white);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin:0 20px 14px;}
+.ava{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff;flex-shrink:0;}
+.pa{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted2);cursor:pointer;transition:color .2s;}
+.pa.liked,.pa:hover{color:var(--green);}
+
+/* ── PROFILE ── */
+.pf-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--forest),var(--leaf));display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px;}
+.pf-stat{flex:1;text-align:center;padding:12px;background:var(--white);border-radius:var(--radius-sm);box-shadow:var(--shadow);}
+.pf-stat-n{font-family:'Playfair Display',serif;font-size:22px;color:var(--text);}
+.pf-stat-l{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+.menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--white);border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;}
+.menu-item:active{transform:scale(.98);}
+
+/* ── MODALS ── */
+.modal{position:absolute;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;z-index:100;}
+.modal.open{display:flex;animation:fadeIn .2s;}
+.msheet{background:var(--white);width:100%;border-radius:24px 24px 0 0;padding:20px;max-height:80%;overflow-y:auto;animation:up .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mhandle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
+.mt{font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:16px;}
+
+/* ── TOAST ── */
+.toast{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:var(--forest);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;white-space:nowrap;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+/* ── STORE ── */
+.store-i{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);}
+.store-i:last-child{border-bottom:none;}
+.store-img{width:56px;height:56px;background:var(--pale);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}
+.add-btn{background:var(--forest);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;}
+.add-btn:active{transform:scale(.96);}
+
+/* ── SPINNER ── */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* ── NUDGE ── */
+.nudge{background:linear-gradient(135deg,var(--pale),#d1fae5);border-radius:var(--radius-sm);padding:14px 16px;border-left:3px solid var(--leaf);cursor:pointer;}
+.nudge-t{font-size:13px;font-weight:600;color:var(--green);margin-bottom:3px;}
+.nudge-b{font-size:12px;color:#374151;line-height:1.5;}
+.nudge-cta{font-size:12px;font-weight:600;color:var(--green);margin-top:8px;display:inline-block;}
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+
+  <!-- ── HOME ── -->
+  <div id="s-home" class="screen active">
+    <div class="sbar"><span>9:41</span><div style="display:flex;gap:5px"><span>●●●</span><span>🔋</span></div></div>
+    <div class="scroll">
+      <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:13px;color:var(--muted2)">Good morning,</div>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;color:var(--text);" id="home-name">Loading... 👋</div>
+        </div>
+        <div style="width:38px;height:38px;background:var(--white);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);cursor:pointer;font-size:18px;" onclick="showNotifications()">🔔</div>
+      </div>
+
+      <div class="banner">
+        <div style="font-size:12px;color:rgba(255,255,255,.6);font-weight:500;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">YOUR JUST ZERO SCORE</div>
+        <div class="bnum" id="home-score">—</div>
+        <div class="b-sub" id="home-grade">Loading your health data...</div>
+        <div class="b-badge" id="home-trend">↑ Improving</div>
+        <div style="position:absolute;right:20px;top:50%;transform:translateY(-50%);text-align:right;">
+          <div style="font-size:22px;font-weight:700;color:#52b788" id="home-hba1c">—</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">HbA1c %</div>
+        </div>
+      </div>
+
+      <div class="qa-grid">
+        <div class="qa" onclick="go('diary')"><div class="qa-icon">🍽️</div><div class="qa-t">Log Meal</div><div class="qa-s">Check GI impact</div></div>
+        <div class="qa" onclick="go('lab')"><div class="qa-icon">🧪</div><div class="qa-t">Lab Results</div><div class="qa-s">HbA1c tracker</div></div>
+        <div class="qa" onclick="go('recipes')"><div class="qa-icon">🍛</div><div class="qa-t">Safe Recipes</div><div class="qa-s">Indian food</div></div>
+        <div class="qa" onclick="openStore()"><div class="qa-icon">🛒</div><div class="qa-t">Just Zero</div><div class="qa-s">Reorder</div></div>
+      </div>
+
+      <div style="padding:0 20px;margin-bottom:8px;" class="slbl">TODAY'S MEALS</div>
+      <div class="card px" style="margin:0 20px 20px;" id="today-meals">
+        <div style="text-align:center;padding:20px;color:var(--muted2);font-size:13px;">
+          <div style="font-size:28px;margin-bottom:8px">🍽️</div>
+          <div>No meals logged today.</div>
+          <button class="btn btn-soft btn-sm" style="margin-top:12px;" onclick="go('diary')">+ Log first meal</button>
+        </div>
+      </div>
+
+      <div style="padding:0 20px;margin-bottom:8px;" class="slbl">TODAY'S TIP</div>
+      <div class="nudge" style="margin:0 20px 24px;" onclick="go('diary')">
+        <div class="nudge-t">🍵 Switch your chai sugar today</div>
+        <div class="nudge-b">Regular sugar in chai causes blood sugar spikes within 30 minutes. Just Zero has zero glycemic index — same sweetness, zero impact.</div>
+        <div class="nudge-cta">Log chai with Just Zero →</div>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="nav-i on" onclick="go('home')"><div class="icon">🏠</div><div class="lbl">Home</div></div>
+      <div class="nav-i" onclick="go('diary')"><div class="icon">🍽️</div><div class="lbl">Diary</div></div>
+      <div class="nav-i" onclick="go('lab')"><div class="icon">🧪</div><div class="lbl">Labs</div></div>
+      <div class="nav-i" onclick="go('recipes')"><div class="icon">🍛</div><div class="lbl">Recipes</div></div>
+      <div class="nav-i" onclick="go('community')"><div class="icon">💬</div><div class="lbl">Community</div></div>
+    </div>
+  </div>
+
+  <!-- ── SUGAR DIARY ── -->
+  <div id="s-diary" class="screen">
+    <div class="sbar"><span>9:41</span><div style="display:flex;gap:5px"><span>🔋</span></div></div>
+    <div class="scroll">
+      <div style="padding:16px 20px;display:flex;align-items:center;gap:10px;">
+        <span style="cursor:pointer;font-size:20px;" onclick="go('home')">←</span>
+        <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:var(--text);">Sugar Diary</h2>
+      </div>
+
+      <div class="card px" style="margin:0 20px 16px;">
+        <div class="slbl">CURRENT BLOOD SUGAR</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;">
+          <div style="font-family:'Playfair Display',serif;font-size:48px;color:var(--text);line-height:1;" id="bs-val">118</div>
+          <div style="font-size:14px;color:var(--muted2);margin-bottom:8px;">mg/dL</div>
+          <div style="flex:1;"></div>
+          <div class="chip chip-g">✓ Normal</div>
+        </div>
+      </div>
+
+      <div style="margin:0 20px 16px;">
+        <div style="display:flex;align-items:center;gap:10px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;box-shadow:var(--shadow);">
+          <span>🔍</span>
+          <input id="food-q" placeholder="Search food (idli, roti, chai, rice...)" style="flex:1;border:none;outline:none;font-family:'Outfit',sans-serif;font-size:15px;color:var(--text);background:transparent;" oninput="searchFood(this.value)">
+        </div>
+      </div>
+
+      <div id="food-results" style="margin:0 20px 16px;display:none;"></div>
+
+      <div id="gi-card" style="display:none;margin:0 20px 16px;" class="card px">
+        <div class="slbl">GLYCEMIC IMPACT</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div id="gi-fname" style="font-size:18px;font-weight:600;color:var(--text);flex:1;"></div>
+          <div id="gi-chip" class="chip"></div>
+        </div>
+        <div class="gi-bar"><div class="gi-needle" id="gi-needle"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:10px;color:var(--green)">Low (0–55)</span>
+          <span style="font-size:10px;color:var(--amber)">Medium</span>
+          <span style="font-size:10px;color:var(--red)">High (70+)</span>
+        </div>
+        <div id="gi-tip" style="font-size:13px;color:#374151;margin-top:12px;line-height:1.6;"></div>
+        <div id="jz-nudge" class="nudge" style="margin:12px 0 0;display:none;">
+          <div class="nudge-t">🍃 Just Zero can help here</div>
+          <div id="jz-nudge-txt" class="nudge-b"></div>
+          <div class="nudge-cta" onclick="openStore()">Order Just Zero →</div>
+        </div>
+        <button class="btn btn-g" style="margin-top:14px;" id="log-btn" onclick="logMeal()">✓ Log this meal</button>
+      </div>
+
+      <div style="padding:0 20px;margin-bottom:8px;" class="slbl">COMMON INDIAN FOODS</div>
+      <div style="margin:0 20px 24px;" id="default-foods"></div>
+    </div>
+    <div class="nav">
+      <div class="nav-i" onclick="go('home')"><div class="icon">🏠</div><div class="lbl">Home</div></div>
+      <div class="nav-i on" onclick="go('diary')"><div class="icon">🍽️</div><div class="lbl">Diary</div></div>
+      <div class="nav-i" onclick="go('lab')"><div class="icon">🧪</div><div class="lbl">Labs</div></div>
+      <div class="nav-i" onclick="go('recipes')"><div class="icon">🍛</div><div class="lbl">Recipes</div></div>
+      <div class="nav-i" onclick="go('community')"><div class="icon">💬</div><div class="lbl">Community</div></div>
+    </div>
+  </div>
+
+  <!-- ── LAB RESULTS ── -->
+  <div id="s-lab" class="screen">
+    <div class="sbar"><span>9:41</span><div><span>🔋</span></div></div>
+    <div class="scroll">
+      <div style="padding:16px 20px;display:flex;align-items:center;gap:10px;">
+        <span style="cursor:pointer;font-size:20px;" onclick="go('home')">←</span>
+        <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:var(--text);">Lab Results</h2>
+      </div>
+
+      <div class="card px" style="margin:0 20px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div class="slbl">LATEST HbA1c</div>
+            <div style="display:flex;align-items:flex-end;gap:4px;">
+              <div class="hba1c-val" id="lab-hba1c">—</div>
+              <div style="font-size:20px;color:var(--muted);margin-bottom:8px;">%</div>
+            </div>
+            <div id="lab-status" style="font-size:12px;font-weight:500;margin-top:4px;"></div>
+          </div>
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#e5e7eb" stroke-width="7"/>
+            <circle id="lab-ring" cx="45" cy="45" r="36" fill="none" stroke="#52b788" stroke-width="7"
+              stroke-dasharray="226" stroke-dashoffset="80" stroke-linecap="round" transform="rotate(-90 45 45)"/>
+          </svg>
+        </div>
+        <div style="margin-top:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted2);margin-bottom:6px;">
+            <span>Target: 6.5%</span><span id="lab-current-pct">Current: —</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="lab-prog" style="width:0%;background:var(--amber);"></div></div>
+        </div>
+      </div>
+
+      <!-- Trend Chart -->
+      <div class="card px" style="margin:0 20px 16px;">
+        <div class="slbl">HbA1c TREND</div>
+        <div id="trend-chart" style="display:flex;align-items:flex-end;gap:8px;height:80px;padding:0 4px;"></div>
+        <div id="trend-msg" style="margin-top:10px;background:var(--pale);border-radius:8px;padding:10px;font-size:13px;color:var(--green);display:none;"></div>
+      </div>
+
+      <!-- Upload -->
+      <div style="margin:0 20px 16px;border:2px dashed var(--leaf);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;background:var(--pale);" onclick="openUpload()">
+        <div style="font-size:36px;margin-bottom:8px;">📋</div>
+        <div style="font-size:15px;font-weight:600;color:var(--green);">Upload Lab Report</div>
+        <div style="font-size:12px;color:var(--muted2);margin-top:4px;line-height:1.5;">Take a photo · AI extracts values automatically</div>
+        <span class="chip chip-g" style="margin-top:12px;">✨ AI-powered</span>
+      </div>
+
+      <!-- Manual Entry -->
+      <div class="card px" style="margin:0 20px 16px;">
+        <div class="slbl">ADD MANUAL READING</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted2);margin-bottom:5px;font-weight:500;">HbA1c %</div>
+            <input id="inp-hba1c" type="number" step="0.1" placeholder="7.2" style="width:100%;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Outfit',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--leaf)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted2);margin-bottom:5px;font-weight:500;">Fasting glucose</div>
+            <input id="inp-fg" type="number" placeholder="118" style="width:100%;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Outfit',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--leaf)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted2);margin-bottom:5px;font-weight:500;">Post-meal (2hr)</div>
+            <input id="inp-pmg" type="number" placeholder="162" style="width:100%;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Outfit',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--leaf)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted2);margin-bottom:5px;font-weight:500;">Lab name</div>
+            <input id="inp-lab" type="text" placeholder="Thyrocare" style="width:100%;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Outfit',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--leaf)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+        </div>
+        <button class="btn btn-g" id="save-lab-btn" onclick="saveLabResult()">Save Lab Result</button>
+      </div>
+
+      <div style="padding:0 20px;margin-bottom:8px;" class="slbl">HISTORY</div>
+      <div style="margin:0 20px 24px;" id="lab-history">
+        <div style="text-align:center;padding:20px;color:var(--muted2);font-size:13px;">No lab results yet. Add your first result above.</div>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="nav-i" onclick="go('home')"><div class="icon">🏠</div><div class="lbl">Home</div></div>
+      <div class="nav-i" onclick="go('diary')"><div class="icon">🍽️</div><div class="lbl">Diary</div></div>
+      <div class="nav-i on" onclick="go('lab')"><div class="icon">🧪</div><div class="lbl">Labs</div></div>
+      <div class="nav-i" onclick="go('recipes')"><div class="icon">🍛</div><div class="lbl">Recipes</div></div>
+      <div class="nav-i" onclick="go('community')"><div class="icon">💬</div><div class="lbl">Community</div></div>
+    </div>
+  </div>
+
+  <!-- ── RECIPES ── -->
+  <div id="s-recipes" class="screen">
+    <div class="sbar"><span>9:41</span><div><span>🔋</span></div></div>
+    <div class="scroll">
+      <div style="padding:16px 20px;display:flex;align-items:center;gap:10px;">
+        <span style="cursor:pointer;font-size:20px;" onclick="go('home')">←</span>
+        <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:var(--text);">Safe Recipes</h2>
+      </div>
+      <div style="margin:0 20px 16px;">
+        <div style="display:flex;gap:10px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;box-shadow:var(--shadow);align-items:center;">
+          <span>🍛</span>
+          <input id="recipe-q" placeholder="Ask: how to make safe gulab jamun?" style="flex:1;border:none;outline:none;font-family:'Outfit',sans-serif;font-size:15px;color:var(--text);background:transparent;" oninput="searchRecipe(this.value)">
+        </div>
+      </div>
+      <div id="recipe-result" style="display:none;margin:0 20px 16px;"></div>
+      <div style="padding:0 20px;margin-bottom:8px;" class="slbl">FROM THE DATABASE</div>
+      <div style="margin:0 20px 24px;" id="recipe-list">
+        <div style="text-align:center;padding:20px;color:var(--muted2);font-size:13px;">Loading recipes...</div>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="nav-i" onclick="go('home')"><div class="icon">🏠</div><div class="lbl">Home</div></div>
+      <div class="nav-i" onclick="go('diary')"><div class="icon">🍽️</div><div class="lbl">Diary</div></div>
+      <div class="nav-i" onclick="go('lab')"><div class="icon">🧪</div><div class="lbl">Labs</div></div>
+      <div class="nav-i on" onclick="go('recipes')"><div class="icon">🍛</div><div class="lbl">Recipes</div></div>
+      <div class="nav-i" onclick="go('community')"><div class="icon">💬</div><div class="lbl">Community</div></div>
+    </div>
+  </div>
+
+  <!-- ── COMMUNITY ── -->
+  <div id="s-community" class="screen">
+    <div class="sbar"><span>9:41</span><div><span>🔋</span></div></div>
+    <div class="scroll">
+      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+        <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:var(--text);">Community</h2>
+        <span class="chip chip-g" id="member-count">— members</span>
+      </div>
+      <div style="margin:0 20px 14px;background:linear-gradient(135deg,var(--forest),#2d6a4f);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:32px;">👩‍⚕️</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;color:#fff;">Dr. Priya Nair, Nutritionist</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">Live Q&A today 6 PM</div>
+        </div>
+        <button style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Outfit',sans-serif;">Join →</button>
+      </div>
+
+      <!-- New Post -->
+      <div style="margin:0 20px 16px;display:flex;gap:10px;align-items:center;">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👤</div>
+        <input id="post-input" placeholder="Share a win or ask a question..." style="flex:1;background:var(--white);border:1.5px solid var(--border);border-radius:20px;padding:10px 16px;font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);outline:none;" onfocus="this.style.borderColor='var(--leaf)'" onblur="this.style.borderColor='var(--border)'">
+        <span style="font-size:24px;cursor:pointer;" onclick="createPost()">📤</span>
+      </div>
+
+      <div style="display:flex;gap:8px;padding:0 20px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;">
+        <div class="chip chip-g">All</div>
+        <div class="chip chip-gr" onclick="filterPosts('win')">🏆 Wins</div>
+        <div class="chip chip-gr" onclick="filterPosts('question')">❓ Questions</div>
+        <div class="chip chip-gr" onclick="filterPosts('tip')">💡 Tips</div>
+      </div>
+
+      <div id="posts-list"></div>
+    </div>
+    <div class="nav">
+      <div class="nav-i" onclick="go('home')"><div class="icon">🏠</div><div class="lbl">Home</div></div>
+      <div class="nav-i" onclick="go('diary')"><div class="icon">🍽️</div><div class="lbl">Diary</div></div>
+      <div class="nav-i" onclick="go('lab')"><div class="icon">🧪</div><div class="lbl">Labs</div></div>
+      <div class="nav-i" onclick="go('recipes')"><div class="icon">🍛</div><div class="lbl">Recipes</div></div>
+      <div class="nav-i on" onclick="go('community')"><div class="icon">💬</div><div class="lbl">Community</div></div>
+    </div>
+  </div>
+
+  <!-- ── MODALS ── -->
+  <div class="modal" id="m-store" onclick="if(event.target===this)closeModal('m-store')">
+    <div class="msheet">
+      <div class="mhandle"></div>
+      <div class="mt">Just Zero Store 🛒</div>
+      <div style="margin-bottom:14px;padding:10px 14px;background:var(--pale);border-radius:var(--radius-sm);font-size:13px;color:var(--green);">🎉 Member discount: 10% off all orders</div>
+      <div class="store-i"><div class="store-img">🧂</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;">Just Zero 200g</div><div style="font-size:11px;color:var(--muted2);">Monk Fruit + Allulose · No erythritol</div><div style="font-size:14px;font-weight:700;color:var(--green);margin-top:4px;">₹720 <s style="color:var(--muted2);font-size:12px;font-weight:400;">₹800</s></div></div><button class="add-btn" onclick="addToCart('200g')">Add</button></div>
+      <div class="store-i"><div class="store-img">📦</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;">3-Pack Bundle</div><div style="font-size:11px;color:var(--muted2);">Best value · 3× 200g</div><div style="font-size:14px;font-weight:700;color:var(--green);margin-top:4px;">₹1,980 <s style="color:var(--muted2);font-size:12px;font-weight:400;">₹2,400</s></div></div><button class="add-btn" onclick="addToCart('3pack')">Add</button></div>
+      <div class="store-i"><div class="store-img">💧</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;">Liquid Drops 20ml</div><div style="font-size:11px;color:var(--muted2);">For chai, nimbu paani, lassi</div><div style="font-size:14px;font-weight:700;color:var(--green);margin-top:4px;">₹350</div></div><button class="add-btn" onclick="addToCart('drops')">Add</button></div>
+      <button class="btn btn-g" style="margin-top:14px;" onclick="placeOrder()">Checkout →</button>
+      <button class="btn btn-out" style="margin-top:8px;" onclick="closeModal('m-store')">Continue</button>
+    </div>
+  </div>
+
+  <div class="modal" id="m-upload" onclick="if(event.target===this)closeModal('m-upload')">
+    <div class="msheet">
+      <div class="mhandle"></div>
+      <div class="mt">Upload Lab Report</div>
+      <div id="upload-state-1">
+        <div style="border:2px dashed var(--leaf);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;background:var(--pale);" onclick="simulateAI()">
+          <div style="font-size:48px;">📷</div>
+          <div style="font-size:15px;font-weight:600;color:var(--green);margin-top:8px;">Take photo or upload</div>
+          <div style="font-size:12px;color:var(--muted2);margin-top:4px;">Thyrocare, SRL, Metropolis, Dr. Lal's</div>
+        </div>
+        <button class="btn btn-g" style="margin-top:14px;" onclick="simulateAI()">📸 Simulate AI Extraction</button>
+      </div>
+      <div id="upload-state-2" style="display:none;text-align:center;padding:20px;">
+        <div style="font-size:48px;animation:sp .7s linear infinite;display:inline-block;">⚙️</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text);margin-top:12px;">Extracting values...</div>
+        <div style="font-size:12px;color:var(--muted2);margin-top:6px;">Reading HbA1c, fasting glucose...</div>
+      </div>
+      <div id="upload-state-3" style="display:none;">
+        <div style="text-align:center;margin-bottom:16px;"><div style="font-size:48px;">✅</div><div style="font-size:16px;font-weight:600;color:var(--green);margin-top:8px;">Values extracted!</div></div>
+        <div style="background:var(--pale);border-radius:var(--radius-sm);padding:14px;">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="font-size:13px;color:#374151;">HbA1c</span><span style="font-size:14px;font-weight:700;color:var(--green);">7.2%</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="font-size:13px;color:#374151;">Fasting glucose</span><span style="font-size:14px;font-weight:700;color:var(--green);">118 mg/dL</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;"><span style="font-size:13px;color:#374151;">Post-meal (2hr)</span><span style="font-size:14px;font-weight:700;color:var(--green);">162 mg/dL</span></div>
+        </div>
+        <button class="btn btn-g" style="margin-top:14px;" onclick="saveAIResult()">Save Results</button>
+        <button class="btn btn-out" style="margin-top:8px;" onclick="closeModal('m-upload')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// SUPABASE CONFIG
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null, currentFood = null, cartItems = [];
+
+// ── INIT ──
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'login-app.html'; return; }
+  currentUser = session.user;
+  loadProfile();
+  loadLabData();
+  loadTodayMeals();
+  buildDefaultFoods();
+  loadRecipes();
+})();
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') window.location.href = 'login-app.html';
+});
+
+// ── PROFILE ──
+async function loadProfile() {
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (data) {
+    const name = data.full_name?.split(' ')[0] || 'Friend';
+    document.getElementById('home-name').textContent = name + ' 👋';
+  }
+  loadScore();
+}
+
+async function loadScore() {
+  const { data } = await sb.from('jz_scores').select('*').eq('user_id', currentUser.id).order('computed_at', { ascending: false }).limit(1).single();
+  if (data) {
+    document.getElementById('home-score').textContent = data.score;
+    document.getElementById('home-grade').textContent = data.grade?.charAt(0).toUpperCase() + data.grade?.slice(1);
+  } else {
+    document.getElementById('home-score').textContent = '—';
+    document.getElementById('home-grade').textContent = 'Log labs to get your score';
+  }
+}
+
+// ── LAB DATA ──
+async function loadLabData() {
+  const { data } = await sb.from('lab_results').select('*').eq('user_id', currentUser.id).order('test_date', { ascending: false }).limit(10);
+  if (!data || data.length === 0) return;
+  const latest = data[0];
+  if (latest.hba1c) {
+    document.getElementById('lab-hba1c').textContent = latest.hba1c;
+    document.getElementById('home-hba1c').textContent = latest.hba1c + '%';
+    document.getElementById('lab-current-pct').textContent = 'Current: ' + latest.hba1c + '%';
+    const pct = Math.min(100, (latest.hba1c / 10) * 100);
+    document.getElementById('lab-prog').style.width = pct + '%';
+    const col = latest.hba1c <= 6.5 ? 'var(--leaf)' : latest.hba1c <= 8 ? 'var(--amber)' : 'var(--red)';
+    document.getElementById('lab-prog').style.background = col;
+    document.getElementById('lab-status').innerHTML = latest.hba1c <= 6.5
+      ? '<span style="color:var(--green)">✓ Well controlled</span>'
+      : latest.hba1c <= 8 ? '<span style="color:var(--amber)">⚠ Needs attention</span>'
+      : '<span style="color:var(--red)">⚡ See your doctor</span>';
+  }
+  renderTrend(data.slice(0, 6).reverse());
+  renderLabHistory(data.slice(0, 5));
+}
+
+function renderTrend(data) {
+  const max = Math.max(...data.map(d => d.hba1c || 0));
+  const chart = document.getElementById('trend-chart');
+  if (!data.length || !max) return;
+  chart.innerHTML = data.map(d => {
+    const h = (d.hba1c / max) * 100;
+    const col = d.hba1c <= 6.5 ? '#52b788' : d.hba1c <= 8 ? '#ef9f27' : '#e53935';
+    const mo = new Date(d.test_date).toLocaleString('en-IN', { month: 'short' });
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <div style="font-size:11px;font-weight:600;color:var(--text);">${d.hba1c}</div>
+      <div style="width:100%;height:${h}%;background:${col};border-radius:4px 4px 0 0;min-height:4px;"></div>
+      <div style="font-size:10px;color:var(--muted2)">${mo}</div>
+    </div>`;
+  }).join('');
+  if (data.length >= 2) {
+    const first = data[0].hba1c, last = data[data.length-1].hba1c;
+    const msg = document.getElementById('trend-msg');
+    msg.style.display = 'block';
+    if (last < first) msg.textContent = `🎉 Great progress! HbA1c dropped ${(first-last).toFixed(1)}% since ${new Date(data[0].test_date).toLocaleString('en-IN',{month:'long'})}.`;
+    else msg.innerHTML = `<span style="color:var(--amber)">Keep going! Follow your 30-day plan to bring this down.</span>`;
+  }
+}
+
+function renderLabHistory(data) {
+  if (!data.length) return;
+  document.getElementById('lab-history').innerHTML = data.map((d, i) => {
+    const prev = data[i+1];
+    const delta = prev?.hba1c ? (d.hba1c - prev.hba1c).toFixed(1) : null;
+    const deltaHtml = delta !== null
+      ? `<div style="font-size:12px;font-weight:600;color:${delta<0?'var(--green)':'var(--red)'};">${delta>0?'↑':'↓'} ${Math.abs(delta)}</div>`
+      : '';
+    return `<div class="hist-item">
+      <div style="font-size:12px;color:var(--muted2);min-width:80px;">${new Date(d.test_date).toLocaleDateString('en-IN',{month:'short',year:'numeric'})}</div>
+      <div style="flex:1;"><div style="font-size:16px;font-weight:600;">${d.hba1c||'—'}%</div><div style="font-size:11px;color:var(--muted2);">HbA1c${d.lab_name?' · '+d.lab_name:''}</div></div>
+      ${deltaHtml}
+    </div>`;
+  }).join('');
+}
+
+async function saveLabResult() {
+  const hba1c = document.getElementById('inp-hba1c').value;
+  const fg = document.getElementById('inp-fg').value;
+  const pmg = document.getElementById('inp-pmg').value;
+  const lab = document.getElementById('inp-lab').value;
+  if (!hba1c && !fg) return showToast('Enter at least one value');
+  setBtnLoading('save-lab-btn', true);
+  const { error } = await sb.from('lab_results').insert({
+    user_id: currentUser.id,
+    test_date: new Date().toISOString().split('T')[0],
+    hba1c: hba1c ? parseFloat(hba1c) : null,
+    fasting_glucose: fg ? parseFloat(fg) : null,
+    postmeal_glucose: pmg ? parseFloat(pmg) : null,
+    lab_name: lab || null
+  });
+  setBtnLoading('save-lab-btn', false);
+  if (error) return showToast('Error: ' + error.message);
+  showToast('✓ Lab result saved!');
+  ['inp-hba1c','inp-fg','inp-pmg','inp-lab'].forEach(id => document.getElementById(id).value = '');
+  loadLabData();
+  computeAndSaveScore(hba1c);
+}
+
+async function computeAndSaveScore(hba1c) {
+  if (!hba1c) return;
+  const h = parseFloat(hba1c);
+  const hba1c_pts = h <= 6.5 ? 40 : h <= 7 ? 34 : h <= 7.5 ? 28 : h <= 8 ? 20 : h <= 9 ? 12 : 5;
+  const score = hba1c_pts + 30 + 15 + 5; // diet + usage + activity placeholders
+  const grade = score >= 80 ? 'excellent' : score >= 65 ? 'good' : score >= 50 ? 'moderate' : score >= 35 ? 'poor' : 'critical';
+  await sb.from('jz_scores').insert({ user_id: currentUser.id, score, grade, hba1c_points: hba1c_pts });
+  document.getElementById('home-score').textContent = score;
+  document.getElementById('home-grade').textContent = grade.charAt(0).toUpperCase() + grade.slice(1);
+}
+
+// ── MEAL LOGGING ──
+async function loadTodayMeals() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await sb.from('meal_logs')
+    .select('*').eq('user_id', currentUser.id)
+    .gte('logged_at', today + 'T00:00:00')
+    .order('logged_at', { ascending: false }).limit(5);
+  if (!data || data.length === 0) return;
+  const colors = { safe:'var(--leaf)', caution:'var(--amber)', spike:'var(--red)' };
+  document.getElementById('today-meals').innerHTML = data.map(m => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="width:10px;height:10px;border-radius:50%;background:${colors[m.gi_level]||'#ccc'};flex-shrink:0;"></div>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:500;">${m.food_name}</div><div style="font-size:11px;color:var(--muted2);">${m.meal_type} · ${new Date(m.logged_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</div></div>
+      <div style="font-size:12px;font-weight:600;color:${colors[m.gi_level]||'#ccc'};">GI ${m.gi_index}</div>
+    </div>`).join('') + `<button class="btn btn-soft btn-sm" style="margin-top:12px;" onclick="go('diary')">+ Log another</button>`;
+}
+
+async function logMeal() {
+  if (!currentFood) return;
+  setBtnLoading('log-btn', true);
+  const { error } = await sb.from('meal_logs').insert({
+    user_id: currentUser.id,
+    food_name: currentFood.name,
+    food_emoji: currentFood.emoji,
+    gi_index: currentFood.gi,
+    gi_level: currentFood.level,
+    meal_type: getMealType(),
+    used_just_zero: currentFood.jz
+  });
+  setBtnLoading('log-btn', false);
+  if (error) return showToast('Error: ' + error.message);
+  document.getElementById('gi-card').style.display = 'none';
+  document.getElementById('food-q').value = '';
+  showToast('✓ Meal logged!');
+  loadTodayMeals();
+}
+
+function getMealType() {
+  const h = new Date().getHours();
+  return h < 10 ? 'breakfast' : h < 12 ? 'morning_snack' : h < 15 ? 'lunch' : h < 18 ? 'evening_snack' : 'dinner';
+}
+
+// ── FOOD DB ──
+const foods = [
+  {name:'Idli (2 pieces)',emoji:'🫓',gi:40,level:'safe',portion:'150g',tip:'Excellent! Fermented batter lowers GI. Pair with sambar, not coconut chutney.',jz:false},
+  {name:'Plain Dosa',emoji:'🥞',gi:62,level:'caution',portion:'1 medium',tip:'Medium GI. Try ragi dosa (GI 45) for a better option.',jz:false},
+  {name:'White Rice',emoji:'🍚',gi:72,level:'spike',portion:'1 cup cooked',tip:'High GI. Limit to ½ cup or switch to brown rice (GI 50).',jz:false},
+  {name:'Brown Rice',emoji:'🍚',gi:50,level:'safe',portion:'1 cup cooked',tip:'Good choice. High fibre slows digestion and glucose absorption.',jz:false},
+  {name:'Roti (whole wheat)',emoji:'🫓',gi:49,level:'safe',portion:'1 medium',tip:'Good choice! Avoid maida chapati.',jz:false},
+  {name:'Chai with sugar',emoji:'☕',gi:65,level:'caution',portion:'1 cup',tip:'2 tsp sugar = 8g carbs. Blood sugar spike in 30 min.',jz:true,jzText:'Replace sugar with Just Zero (GI 0). Same taste, zero blood sugar impact.'},
+  {name:'Oats porridge',emoji:'🥣',gi:42,level:'safe',portion:'1 bowl',tip:'Excellent choice. Steel-cut oats have even lower GI (35).',jz:true,jzText:'Use Just Zero instead of sugar. Adds sweetness with no glucose impact.'},
+  {name:'Gulab Jamun',emoji:'🍮',gi:77,level:'spike',portion:'2 pieces',tip:'Very high GI from sugar + maida + frying.',jz:true,jzText:'Check our Safe Recipes! Almond flour + Just Zero version has GI 28.'},
+  {name:'Dal (any variety)',emoji:'🍛',gi:29,level:'safe',portion:'1 bowl',tip:'Superstar diabetic food. High protein + fibre. Eat generously.',jz:false},
+  {name:'Banana',emoji:'🍌',gi:56,level:'caution',portion:'1 medium',tip:'Choose slightly green bananas or eat half at a time.',jz:false},
+];
+
+function buildDefaultFoods() {
+  const el = document.getElementById('default-foods');
+  if (el.children.length) return;
+  [0,4,2,5,8].forEach(i => {
+    const f = foods[i];
+    el.innerHTML += foodHTML(f, i);
+  });
+}
+
+function foodHTML(f, i) {
+  return `<div class="food-item" onclick="showGI(${i})">
+    <div style="font-size:28px;flex-shrink:0;">${f.emoji}</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:500;">${f.name}</div><div style="font-size:11px;color:var(--muted2);">${f.portion}</div></div>
+    <div class="fi-gi ${f.level==='safe'?'gi-safe':f.level==='caution'?'gi-caution':'gi-spike'}">GI ${f.gi}</div>
+  </div>`;
+}
+
+function searchFood(q) {
+  const lq = q.toLowerCase().trim();
+  const results = document.getElementById('food-results');
+  const gi = document.getElementById('gi-card');
+  if (!lq) { results.style.display = 'none'; gi.style.display = 'none'; return; }
+  const matches = foods.filter(f => f.name.toLowerCase().includes(lq));
+  if (!matches.length) { results.innerHTML = '<div style="padding:12px 4px;font-size:13px;color:var(--muted2);">No match. Try: idli, roti, rice, chai...</div>'; results.style.display = 'block'; return; }
+  results.innerHTML = matches.map((f, i) => foodHTML(f, foods.indexOf(f))).join('');
+  results.style.display = 'block';
+  gi.style.display = 'none';
+}
+
+function showGI(idx) {
+  currentFood = foods[idx];
+  const f = currentFood;
+  document.getElementById('gi-fname').textContent = f.emoji + ' ' + f.name;
+  const chip = document.getElementById('gi-chip');
+  chip.className = 'chip';
+  if (f.level==='safe') { chip.classList.add('chip-g'); chip.textContent = '✓ Low GI ' + f.gi; }
+  else if (f.level==='caution') { chip.classList.add('chip-a'); chip.textContent = '⚠ Medium GI ' + f.gi; }
+  else { chip.classList.add('chip-r'); chip.textContent = '⚡ High GI ' + f.gi; }
+  document.getElementById('gi-needle').style.left = Math.min(90, (f.gi/100)*90) + '%';
+  document.getElementById('gi-tip').textContent = f.tip;
+  const nudge = document.getElementById('jz-nudge');
+  if (f.jz) { nudge.style.display = 'block'; document.getElementById('jz-nudge-txt').textContent = f.jzText; }
+  else nudge.style.display = 'none';
+  document.getElementById('food-results').style.display = 'none';
+  document.getElementById('food-q').value = '';
+  const gi = document.getElementById('gi-card');
+  gi.style.display = 'block';
+  gi.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── RECIPES ──
+async function loadRecipes() {
+  const { data } = await sb.from('recipes').select('*').eq('is_published', true).order('title');
+  const el = document.getElementById('recipe-list');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted2);font-size:13px;">No recipes yet. Admin will add soon.</div>';
+    return;
+  }
+  el.innerHTML = data.map(r => `
+    <div class="pop-recipe" onclick="showRecipeDetail(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+      <div style="font-size:28px;">${r.emoji||'🍛'}</div>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:500;">${r.title}</div><div style="font-size:11px;color:var(--muted2);">GI ${r.gi_index||'?'} · ${r.tags?.join(' · ')||''}</div></div>
+      <span style="color:var(--muted2);font-size:20px;">›</span>
+    </div>`).join('');
+}
+
+function searchRecipe(q) {
+  if (q.length < 3) { document.getElementById('recipe-result').style.display='none'; return; }
+  loadRecipes(); // will search via Supabase in a real implementation
+}
+
+function showRecipeDetail(r) {
+  const orig = r.original_ingredients || [];
+  const safe = r.safe_ingredients || [];
+  const steps = r.steps || [];
+  document.getElementById('recipe-result').style.display = 'block';
+  document.getElementById('recipe-result').innerHTML = `
+    <div class="card px">
+      <div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:8px;">${r.emoji||'🍛'} ${r.title}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        ${(r.tags||[]).map(t=>`<span class="chip chip-g">${t}</span>`).join('')}
+        ${r.gi_index?`<span class="chip chip-g">GI ${r.gi_index}</span>`:''}
+      </div>
+      <div class="slbl">WHAT CHANGES</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div style="padding:12px;background:var(--red-soft);border-radius:var(--radius-sm);">
+          <div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Original</div>
+          ${orig.map(i=>`<div style="font-size:12px;color:#374151;padding:2px 0;">✗ ${i.name}</div>`).join('')}
+        </div>
+        <div style="padding:12px;background:#d1fae5;border-radius:var(--radius-sm);">
+          <div style="font-size:10px;font-weight:600;color:#065f46;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Safe version</div>
+          ${safe.map(i=>`<div style="font-size:12px;color:#374151;padding:2px 0;">✓ ${i.name}${i.is_jz?' 🍃':''}</div>`).join('')}
+        </div>
+      </div>
+      <div class="slbl">STEPS</div>
+      ${steps.map(s=>`<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--pale);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--green);flex-shrink:0;">${s.step}</div>
+        <div style="font-size:13px;color:#374151;line-height:1.5;">${s.description}</div>
+      </div>`).join('')}
+      <button class="btn btn-g" style="margin-top:14px;" onclick="openStore()">Order Just Zero →</button>
+    </div>`;
+  document.getElementById('recipe-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── COMMUNITY ──
+async function loadPosts(category = null) {
+  let q = sb.from('community_posts').select(`*, profiles(full_name, city)`).eq('is_approved', true).order('created_at', { ascending: false }).limit(10);
+  if (category) q = q.eq('category', category);
+  const { data } = await q;
+  document.getElementById('posts-list').innerHTML = (data||[]).map(p => {
+    const initials = (p.profiles?.full_name||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    const colors = ['#2d6a4f','#e76f00','#1a73e8','#7c3aed','#dc2626'];
+    const bg = colors[Math.abs(p.user_id.charCodeAt(0)) % colors.length];
+    return `<div class="post">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div class="ava" style="background:${bg};">${initials}</div>
+        <div><div style="font-size:14px;font-weight:600;">${p.profiles?.full_name||'Member'}${p.profiles?.city?', '+p.profiles.city:''}</div><div style="font-size:11px;color:var(--muted2);">${timeSince(p.created_at)}</div></div>
+        ${p.category==='win'?'<span class="chip chip-g" style="margin-left:auto;">🏆 Win</span>':''}
+      </div>
+      <div style="font-size:14px;color:#374151;line-height:1.6;margin-bottom:10px;">${p.body}</div>
+      ${p.hba1c_before&&p.hba1c_after?`<div style="background:var(--pale);border-radius:8px;padding:10px;margin-bottom:10px;display:flex;align-items:center;gap:16px;">
+        <div style="text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--red);">${p.hba1c_before}%</div><div style="font-size:10px;color:var(--muted2);">Before</div></div>
+        <div style="font-size:18px;color:var(--green);">→</div>
+        <div style="text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--green);">${p.hba1c_after}%</div><div style="font-size:10px;color:var(--muted2);">After</div></div>
+      </div>`:''}
+      <div style="display:flex;gap:16px;">
+        <div class="pa" onclick="toggleLike('${p.id}',this)">❤️ <span>${p.likes_count||0}</span></div>
+        <div class="pa">💬 ${p.replies_count||0} replies</div>
+        <div class="pa" onclick="sharePost('${p.id}')">📤 Share</div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="text-align:center;padding:30px;color:var(--muted2);">No posts yet. Be the first!</div>';
+  const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role','user');
+  document.getElementById('member-count').textContent = (count||0) + ' members';
+}
+
+async function createPost() {
+  const body = document.getElementById('post-input').value.trim();
+  if (!body) return;
+  await sb.from('community_posts').insert({ user_id: currentUser.id, body, category: 'general' });
+  document.getElementById('post-input').value = '';
+  showToast('✓ Post shared!');
+  loadPosts();
+}
+
+async function toggleLike(postId, el) {
+  const liked = el.classList.contains('liked');
+  const span = el.querySelector('span');
+  if (liked) {
+    await sb.from('post_likes').delete().eq('post_id', postId).eq('user_id', currentUser.id);
+    el.classList.remove('liked');
+    span.textContent = parseInt(span.textContent) - 1;
+  } else {
+    await sb.from('post_likes').insert({ post_id: postId, user_id: currentUser.id });
+    el.classList.add('liked');
+    span.textContent = parseInt(span.textContent) + 1;
+  }
+}
+
+function filterPosts(cat) { loadPosts(cat); }
+
+// ── ORDERS ──
+async function placeOrder() {
+  if (!cartItems.length) return;
+  const prices = { '200g': 720, '3pack': 1980, 'drops': 350 };
+  const names = { '200g': 'Just Zero 200g', '3pack': '3-Pack Bundle', 'drops': 'Liquid Drops 20ml' };
+  const items = cartItems.map(sku => ({ sku, name: names[sku], qty: 1, price: prices[sku] }));
+  const total = items.reduce((s, i) => s + i.price, 0);
+  await sb.from('orders').insert({ user_id: currentUser.id, items_json: items, subtotal: total, total: total * 0.9, discount: total * 0.1 });
+  cartItems = [];
+  closeModal('m-store');
+  showToast('🎉 Order placed!');
+}
+
+function addToCart(sku) { cartItems.push(sku); showToast('✓ Added to cart'); }
+
+// ── UPLOAD / AI ──
+function simulateAI() {
+  document.getElementById('upload-state-1').style.display = 'none';
+  document.getElementById('upload-state-2').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('upload-state-2').style.display = 'none';
+    document.getElementById('upload-state-3').style.display = 'block';
+  }, 2200);
+}
+
+async function saveAIResult() {
+  await sb.from('lab_results').insert({
+    user_id: currentUser.id, test_date: new Date().toISOString().split('T')[0],
+    hba1c: 7.2, fasting_glucose: 118, postmeal_glucose: 162,
+    lab_name: 'AI Extracted', ai_extracted: true
+  });
+  closeModal('m-upload');
+  showToast('✓ Results saved!');
+  loadLabData();
+  computeAndSaveScore(7.2);
+}
+
+// ── NAV ──
+function go(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-i').forEach(n => n.classList.remove('on'));
+  const s = document.getElementById('s-' + screen);
+  if (s) s.classList.add('active');
+  document.querySelectorAll('.nav-i').forEach(n => {
+    if (n.querySelector('.lbl')?.textContent.toLowerCase().includes(screen.replace('home','home'))) n.classList.add('on');
+  });
+  const navMap = { home:0, diary:1, lab:2, recipes:3, community:4 };
+  if (navMap[screen] !== undefined) {
+    document.querySelectorAll('.nav-i').forEach((n,i) => n.classList.toggle('on', i === navMap[screen]));
+  }
+  if (screen === 'community') { loadPosts(); }
+  if (screen === 'recipes') { loadRecipes(); }
+}
+
+// ── MODALS ──
+function openStore() { document.getElementById('m-store').classList.add('open'); }
+function openUpload() {
+  ['upload-state-1','upload-state-2','upload-state-3'].forEach(id => document.getElementById(id).style.display = id==='upload-state-1' ? 'block' : 'none');
+  document.getElementById('m-upload').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── HELPERS ──
+function setBtnLoading(id, on) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = on;
+  if (on) { btn.dataset.orig = btn.innerHTML; btn.innerHTML = '<span class="spin"></span> Saving...'; }
+  else btn.innerHTML = btn.dataset.orig;
+}
+function timeSince(ts) {
+  const d = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (d < 60) return 'just now';
+  if (d < 3600) return Math.floor(d/60) + ' min ago';
+  if (d < 86400) return Math.floor(d/3600) + ' hr ago';
+  return Math.floor(d/86400) + 'd ago';
+}
+function showNotifications() { showToast('No new notifications'); }
+function sharePost(id) { showToast('Link copied!'); }
+</script>
+</body>
+</html>
